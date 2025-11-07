@@ -12,6 +12,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { getOrder, updateAnalytesBulk, generateOrderReport, type TestOrder, type OrderItemAnalyte } from '../api';
+import { capitalize } from '../utils/utils';
+// agrupar orina
+import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
 
 type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string };
 
@@ -47,16 +50,12 @@ export default function OrderDetailPage() {
     try {
       setDownloading(true);
       const blob = await generateOrderReport(order.id);
-
-      // Crear URL del blob y descargar
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `informe-${order.orderNumber || order.id}.pdf`;
       document.body.appendChild(a);
       a.click();
-
-      // Limpiar
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -65,10 +64,8 @@ export default function OrderDetailPage() {
       setDownloading(false);
     }
   };
-  useEffect(() => {
-    fetchOrder();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderId]);
+
+  useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
   const handleSaveAll = async () => {
     if (!order || !dirty) return;
@@ -97,9 +94,7 @@ export default function OrderDetailPage() {
 
   const handleDelete = async (itemId: string) => {
     if (!window.confirm('¿Estás seguro de eliminar este estudio?')) return;
-    // Aquí debes implementar la llamada a tu API para eliminar
-    // await deleteOrderItem(itemId);
-    // await fetchOrder();
+    // TODO: delete item en API
     console.log('Eliminar item:', itemId);
   };
 
@@ -126,17 +121,10 @@ export default function OrderDetailPage() {
         <Link component={RouterLink} to={`/patients/${order.patientId}/analyses`} underline="none">
           <Button startIcon={<ArrowBackIcon />}>Volver</Button>
         </Link>
-        <Typography variant="h4" fontWeight={700}>
-          Detalle del Análisis
-        </Typography>
+        <Typography variant="h4" fontWeight={700}>Detalle del Análisis</Typography>
         <Box sx={{ flex: 1 }} />
         <Stack direction="row" spacing={1}>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={handleDownloadReport}
-            disabled={downloading}
-          >
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadReport} disabled={downloading}>
             {downloading ? 'Generando...' : 'Descargar PDF'}
           </Button>
           <Button
@@ -144,13 +132,11 @@ export default function OrderDetailPage() {
             startIcon={<VisibilityIcon />}
             component={RouterLink}
             to={`/orders/${orderId}/report`}
-            state={{ from: `/orders/${orderId}`, patientId: order.patientId }} 
+            state={{ from: `/orders/${orderId}`, patientId: order.patientId }}
           >
             Vista Previa
           </Button>
-          <Button variant="outlined" disabled={!dirty || saving} onClick={handleDiscard}>
-            Deshacer
-          </Button>
+          <Button variant="outlined" disabled={!dirty || saving} onClick={handleDiscard}>Deshacer</Button>
           <Button variant="contained" disabled={!dirty || saving} onClick={handleSaveAll}>
             {saving ? 'Guardando…' : 'Guardar cambios'}
           </Button>
@@ -207,6 +193,7 @@ export default function OrderDetailPage() {
               <TableCell width={100} align="center"><strong>Acciones</strong></TableCell>
             </TableRow>
           </TableHead>
+
           <TableBody>
             {order.items.length === 0 ? (
               <TableRow>
@@ -219,7 +206,7 @@ export default function OrderDetailPage() {
                 const hasMultipleItems = item.analytes.length > 1;
                 const open = !!expanded[item.id];
 
-                // Si solo tiene 1 item, mostrarlo directamente SIN acordeón
+                // Un solo analito → fila directa
                 if (!hasMultipleItems && item.analytes.length === 1) {
                   const a = item.analytes[0];
                   const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
@@ -230,10 +217,8 @@ export default function OrderDetailPage() {
                   return (
                     <TableRow key={item.id} hover>
                       <TableCell width={48} />
-                      <TableCell width={120}>
-                        <code style={{ fontWeight: 600 }}>{item.examType.code}</code>
-                      </TableCell>
-                      <TableCell>{a.itemDef.label}</TableCell>
+                      <TableCell width={120}><code style={{ fontWeight: 600 }}>{item.examType.code}</code></TableCell>
+                      <TableCell>{capitalize(a.itemDef.label)}</TableCell>
                       <TableCell width={150}>
                         <TextField
                           size="small"
@@ -251,18 +236,10 @@ export default function OrderDetailPage() {
                           sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
                         />
                       </TableCell>
-                      <TableCell width={100}>
-                        <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
-                      </TableCell>
-                      <TableCell width={150}>
-                        <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
-                      </TableCell>
+                      <TableCell width={100}><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
+                      <TableCell width={150}><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
                       <TableCell width={100} align="center">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(item.id)}
-                        >
+                        <IconButton size="small" color="error" onClick={() => handleDelete(item.id)}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
@@ -270,7 +247,7 @@ export default function OrderDetailPage() {
                   );
                 }
 
-                // Si tiene múltiples items, usar acordeón
+                // Múltiples analitos → acordeón
                 return (
                   <Fragment key={item.id}>
                     <TableRow hover>
@@ -279,19 +256,13 @@ export default function OrderDetailPage() {
                           {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
                         </IconButton>
                       </TableCell>
-                      <TableCell width={120}>
-                        <code style={{ fontWeight: 600 }}>{item.examType.code}</code>
-                      </TableCell>
+                      <TableCell width={120}><code style={{ fontWeight: 600 }}>{item.examType.code}</code></TableCell>
                       <TableCell>{item.examType.name}</TableCell>
                       <TableCell colSpan={3} sx={{ color: 'text.secondary' }}>
                         {open ? '—' : 'Click en la flecha para ver ítems'}
                       </TableCell>
                       <TableCell align="center">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleDelete(item.id)}
-                        >
+                        <IconButton size="small" color="error" onClick={() => handleDelete(item.id)}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
@@ -301,9 +272,9 @@ export default function OrderDetailPage() {
                       <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
                         <Collapse in={open} timeout="auto" unmountOnExit>
                           <Box sx={{ m: 1 }}>
-                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                              Ítems del código
-                            </Typography>
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>Ítems del código</Typography>
+
+                            {/* Tabla interna del acordeón */}
                             <Table size="small">
                               <TableHead>
                                 <TableRow>
@@ -314,49 +285,122 @@ export default function OrderDetailPage() {
                                   <TableCell width={120} align="center"><strong>Estado</strong></TableCell>
                                 </TableRow>
                               </TableHead>
-                              <TableBody>
-                                {item.analytes.map((a: OrderItemAnalyte) => {
-                                  const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
-                                  const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
-                                  const current = drafts[a.id]?.value ?? String(baseShown ?? '');
-                                  const isEdited = !!drafts[a.id];
 
-                                  return (
-                                    <TableRow key={a.id}>
-                                      <TableCell>{a.itemDef.label}</TableCell>
-                                      <TableCell>
-                                        <TextField
-                                          size="small"
-                                          type={kind === 'NUMERIC' ? 'number' : 'text'}
-                                          value={current}
-                                          onChange={(e) => {
-                                            const v = e.target.value;
-                                            setDrafts((d) => ({
-                                              ...d,
-                                              [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
-                                            }));
-                                          }}
-                                          placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
-                                          fullWidth
-                                          sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
-                                        />
-                                      </TableCell>
-                                      <TableCell>
-                                        <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
-                                      </TableCell>
-                                      <TableCell align="center">
-                                        <Chip
-                                          size="small"
-                                          color={a.status === 'DONE' ? 'success' : 'warning'}
-                                          label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
-                                        />
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
+                              <TableBody>
+                                {isUrineExamCode(item.examType.code) ? (
+                                  // Orina completa (660711) agrupada EF/EQ/EM
+                                  (() => {
+                                    const groups = groupUrineAnalytes(item.analytes);
+
+                                    const SectionRow = ({ title }: { title: string }) => (
+                                      <TableRow>
+                                        <TableCell colSpan={5} sx={{ bgcolor: 'action.hover', fontWeight: 700 }}>
+                                          {title}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+
+                                    const renderRows = (rows: typeof item.analytes) => rows.map((a: OrderItemAnalyte) => {
+                                      const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+                                      const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
+                                      const current = drafts[a.id]?.value ?? String(baseShown ?? '');
+                                      const isEdited = !!drafts[a.id];
+
+                                      return (
+                                        <TableRow key={a.id}>
+                                          <TableCell>{capitalize(a.itemDef.label)}</TableCell>
+                                          <TableCell>
+                                            <TextField
+                                              size="small"
+                                              type={kind === 'NUMERIC' ? 'number' : 'text'}
+                                              value={current}
+                                              onChange={(e) => {
+                                                const v = e.target.value;
+                                                setDrafts((d) => ({
+                                                  ...d,
+                                                  [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
+                                                }));
+                                              }}
+                                              placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                                              fullWidth
+                                              sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                            />
+                                          </TableCell>
+                                          <TableCell><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
+                                          <TableCell><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
+                                          <TableCell align="center">
+                                            <Chip
+                                              size="small"
+                                              color={a.status === 'DONE' ? 'success' : 'warning'}
+                                              label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    });
+
+                                    return (
+                                      <>
+                                        {groups.EF.length > 0 && (<>
+                                          <SectionRow title={urinePrefixTitle.EF} />
+                                          {renderRows(groups.EF)}
+                                        </>)}
+                                        {groups.EQ.length > 0 && (<>
+                                          <SectionRow title={urinePrefixTitle.EQ} />
+                                          {renderRows(groups.EQ)}
+                                        </>)}
+                                        {groups.EM.length > 0 && (<>
+                                          <SectionRow title={urinePrefixTitle.EM} />
+                                          {renderRows(groups.EM)}
+                                        </>)}
+                                        {groups.OTHER.length > 0 && (<>
+                                          <SectionRow title="Otros" />
+                                          {renderRows(groups.OTHER)}
+                                        </>)}
+                                      </>
+                                    );
+                                  })()
+                                ) : (
+                                  // Resto de estudios sin agrupación
+                                  item.analytes.map((a: OrderItemAnalyte) => {
+                                    const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+                                    const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
+                                    const current = drafts[a.id]?.value ?? String(baseShown ?? '');
+                                    const isEdited = !!drafts[a.id];
+
+                                    return (
+                                      <TableRow key={a.id}>
+                                        <TableCell>{capitalize(a.itemDef.label)}</TableCell>
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            type={kind === 'NUMERIC' ? 'number' : 'text'}
+                                            value={current}
+                                            onChange={(e) => {
+                                              const v = e.target.value;
+                                              setDrafts((d) => ({
+                                                ...d,
+                                                [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
+                                              }));
+                                            }}
+                                            placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                                            fullWidth
+                                            sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                          />
+                                        </TableCell>
+                                        <TableCell><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
+                                        <TableCell><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
+                                        <TableCell align="center">
+                                          <Chip
+                                            size="small"
+                                            color={a.status === 'DONE' ? 'success' : 'warning'}
+                                            label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
+                                          />
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })
+                                )}
                               </TableBody>
                             </Table>
                           </Box>

@@ -92,13 +92,14 @@ export default function ExamItemsPage() {
       if (!/^\d{5,7}$/.test(code.trim())) { setErr('Ingresá un código válido'); return; }
 
       if (editing) {
+        console.log('updating', editing.id, form);
         await updateExamItemDef(editing.id, {
           key: form.key.trim(),
           label: form.label.trim(),
           unit: form.unit?.trim() || '',
           kind: form.kind,
           sortOrder: Number(form.sortOrder) || 0,
-          refText: form.refText?.trim() || undefined,
+          refText: form.refText?.trim() || null,
         });
       } else {
         await createExamItemDef({
@@ -108,7 +109,7 @@ export default function ExamItemsPage() {
           unit: form.unit?.trim() || undefined,
           kind: form.kind,
           sortOrder: Number(form.sortOrder) || 0,
-          refText: form.refText?.trim() || undefined,
+          refText: form.refText?.trim() || null,
         });
       }
       setOpen(false);

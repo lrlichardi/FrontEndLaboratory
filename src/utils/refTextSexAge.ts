@@ -141,9 +141,6 @@ export function shouldApplySexAgeFilter(opts: {
 
   // también permitir por label exactamente (si no tienes key todavía)
   if (itemLabel && SEX_AGE_FILTER_KEYS.has(itemLabel)) return true;
-  console.log({ examName });
-  console.log(itemLabel);
-  console.log(itemKey);
   if (examName && SEX_AGE_FILTER_EXAM_NAMES.has(examName.toUpperCase())) return true;
 
   return false;

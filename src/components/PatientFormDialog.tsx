@@ -70,7 +70,7 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
     };
 
     (['phone', 'email', 'address', 'obraSocial', 'codigoAfiliado'] as const).forEach((k) => {
-      if (payload[k] === '') payload[k] = undefined;
+      if (payload[k] === '') payload[k] = null;
     });
 
     // convertir fecha a ISO recién al enviar
