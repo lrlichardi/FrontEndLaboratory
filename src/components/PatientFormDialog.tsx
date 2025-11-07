@@ -25,6 +25,7 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
   });
 
   const [errs, setErrs] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
 
   function validate(values: any) {
     const parsed = patientSchema.safeParse(values);
@@ -62,22 +63,29 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
   };
 
   const handleSubmit = async () => {
+    console.log('Submitting patient form with values:', values);
     const payload: any = {
       ...values,
-      birthDate: values.birthDate, // acá aún yyyy-mm-dd para validar
+      birthDate: values.birthDate,
     };
 
-    // normalizar: "" -> undefined en opcionales
     (['phone', 'email', 'address', 'obraSocial', 'codigoAfiliado'] as const).forEach((k) => {
       if (payload[k] === '') payload[k] = undefined;
     });
 
-    if (!validate(payload)) return; // muestra errores y no envía
-
     // convertir fecha a ISO recién al enviar
     payload.birthDate = new Date(values.birthDate as string).toISOString();
+     console.log(payload);
 
-    await onSubmit(payload);
+    try {
+      setSaving(true);
+      await onSubmit(payload); // si tira error, lo captura PatientsPage y NO se cierra
+      onClose();               // ← cierra también desde el diálogo
+    } finally {
+      setSaving(false);
+    }
+
+
   };
 
   return (
@@ -139,7 +147,7 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
             <TextField
               label="Sexo"
               select
-              value={values.sex || '' }
+              value={values.sex || ''}
               onChange={handleChange('sex')}
               onBlur={(e) => onBlurField('sex', e.target.value)}
               error={!!errs.sex}

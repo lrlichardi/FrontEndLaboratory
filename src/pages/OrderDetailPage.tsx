@@ -10,6 +10,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { getOrder, updateAnalytesBulk, generateOrderReport, type TestOrder, type OrderItemAnalyte } from '../api';
 
 type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string };
@@ -130,7 +131,6 @@ export default function OrderDetailPage() {
         </Typography>
         <Box sx={{ flex: 1 }} />
         <Stack direction="row" spacing={1}>
-          {/* NUEVO BOTÓN DE DESCARGA */}
           <Button
             variant="outlined"
             startIcon={<DownloadIcon />}
@@ -139,7 +139,15 @@ export default function OrderDetailPage() {
           >
             {downloading ? 'Generando...' : 'Descargar PDF'}
           </Button>
-
+          <Button
+            variant="outlined"
+            startIcon={<VisibilityIcon />}
+            component={RouterLink}
+            to={`/orders/${orderId}/report`}
+            state={{ from: `/orders/${orderId}`, patientId: order.patientId }} 
+          >
+            Vista Previa
+          </Button>
           <Button variant="outlined" disabled={!dirty || saving} onClick={handleDiscard}>
             Deshacer
           </Button>

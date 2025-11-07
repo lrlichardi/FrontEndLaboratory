@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
-import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, TextField, Typography, Autocomplete, IconButton, Tooltip } from '@mui/material';
+import { Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle, Link, Stack, TextField, Typography, Autocomplete, IconButton, Tooltip, Snackbar } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -31,7 +31,7 @@ export default function PatientAnalysesPage() {
     const [opts, setOpts] = useState<{ label: string; value: string }[]>([]);
     const [allNomen, setAllNomen] = useState<Nomen[] | null>(null);
     const [patient, setPatient] = useState<Patient | null>(null);
-
+    const [notice, setNotice] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
     const navigate = useNavigate();
 
     const cols: GridColDef[] = useMemo(() => [
@@ -94,7 +94,7 @@ export default function PatientAnalysesPage() {
             setError(null);
             const data = await listOrders(patientId);
             setOrders(data);
-            
+
         } catch (e: any) {
             setError(e.message || 'Error cargando análisis');
         } finally {
@@ -119,7 +119,7 @@ export default function PatientAnalysesPage() {
         }
     }, [open, allNomen]);
 
-    
+
 
     const filterLocal = (q: string) => {
         if (!allNomen) return [];
@@ -190,15 +190,31 @@ export default function PatientAnalysesPage() {
     const handleCreate = async () => {
         if (!patientId || codes.length === 0) { setError('Agregá al menos un código'); return; }
         try {
-            await createOrder({ patientId, orderNumber: orderNumber || undefined, title: title || undefined, doctorName: doctorName || undefined, examCodes: codes, notes: notes || undefined, });
+            const resp = await createOrder({ patientId, orderNumber: orderNumber || undefined, title: title || undefined, doctorName: doctorName || undefined, examCodes: codes, notes: notes || undefined, });
             setOpen(false);
             setOrderNumber(''); setTitle(''); setDoctorName(''); setCodes([]);
+            setNotice({ open: true, message: resp?.message || '¡Análisis creado correctamente!' });
             fetchData();
         } catch (e: any) { setError(e.message || 'No se pudo crear el análisis'); }
     };
 
+    const handleCloseNotice = (_?: any, reason?: string) => {
+        if (reason === 'clickaway') return;
+        setNotice({ open: false, message: '' });
+    };
+
     return (
         <Box>
+            <Snackbar
+                open={notice.open}
+                autoHideDuration={3000}
+                onClose={handleCloseNotice}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert onClose={handleCloseNotice} severity="success" variant="filled" sx={{ width: '100%' }}>
+                    {notice.message}
+                </Alert>
+            </Snackbar>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
                     <Link component={RouterLink} to="/patients" underline="none">

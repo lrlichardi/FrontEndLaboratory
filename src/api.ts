@@ -49,6 +49,7 @@ export async function updatePatient(id: string, data: Partial<Patient>): Promise
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+  console.log(res);
   if (!res.ok) throw new Error('No se pudo actualizar el paciente');
   return res.json();
 }
@@ -93,13 +94,13 @@ export async function createOrder(payload: {
   examCodes: string[];
   notes?: string;
 }): Promise<TestOrder> {
-  const r = await fetch(`${BASE_URL}/orders`, {
+  const resp = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!r.ok) throw new Error('No se pudo crear el análisis');
-  return r.json();
+  if (!resp.ok) throw new Error('No se pudo crear el análisis');
+  return resp.json();
 }
 
 export async function upsertOrderItemResult(orderItemId: string, payload: {
@@ -153,7 +154,7 @@ export async function fetchExamItemsByCode(code: string): Promise<{ examType: Ex
 }
 
 export async function createExamItemDef(input: {
-  code: string; key: string; label: string; unit?: string; kind?: string; sortOrder?: number; refText?: string | null; 
+  code: string; key: string; label: string; unit?: string; kind?: string; sortOrder?: number; refText?: string | null;
 }): Promise<ExamItemDef> {
   const r = await fetch(`${BASE_URL}/exam-item-def`, {
     method: 'POST',
@@ -164,7 +165,7 @@ export async function createExamItemDef(input: {
   return r.json();
 }
 
-export async function updateExamItemDef(id: string, patch: Partial<Pick<ExamItemDef, 'key'|'label'|'unit'|'kind'|'sortOrder'|'refText'>>): Promise<ExamItemDef> {
+export async function updateExamItemDef(id: string, patch: Partial<Pick<ExamItemDef, 'key' | 'label' | 'unit' | 'kind' | 'sortOrder' | 'refText'>>): Promise<ExamItemDef> {
   const r = await fetch(`${BASE_URL}/exam-item-def/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -179,7 +180,7 @@ export async function deleteExamItemDef(id: string): Promise<void> {
   if (!r.ok) throw new Error(await r.text());
 }
 
-export type ExamItemDef = { id: string; key: string; label: string; unit?: string | null; kind: string; sortOrder: number;refText?: string | null; };
+export type ExamItemDef = { id: string; key: string; label: string; unit?: string | null; kind: string; sortOrder: number; refText?: string | null; };
 
 export type OrderItemAnalyte = {
   id: string;
@@ -199,16 +200,18 @@ export type OrderItem = {
   analytes: OrderItemAnalyte[];
 };
 
-export type TestOrder = {
+export interface TestOrder {
   id: string;
-  patientId: string;
-  orderNumber?: string | null;
-  title?: string | null;
-  doctor?: { fullName?: string | null } | null;
+  orderNumber: string;
+  title?: string;
   createdAt: string;
-  notes?: string | null;
+  notes?: string;
+  patientId: string;
+  patient: Patient;  
+  doctorId?: string;
+  doctor?: { fullName?: string | null } | null;   
   items: OrderItem[];
-};
+}
 
 export async function getOrder(id: string): Promise<TestOrder> {
   const r = await fetch(`${BASE_URL}/orders/${id}`);

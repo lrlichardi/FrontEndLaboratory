@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Box, Button, IconButton, Paper, Stack, TextField, Tooltip } from '@mui/material';
+import { Snackbar, Alert, Box, Button, IconButton, Paper, Stack, TextField, Tooltip } from '@mui/material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
@@ -20,6 +20,10 @@ export default function PatientsPage() {
   const [rowCount, setRowCount] = useState(0);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
+  const [notice, setNotice] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  });
 
   const navigate = useNavigate();
 
@@ -102,20 +106,38 @@ export default function PatientsPage() {
 
   const onSubmitDialog = async (payload: Partial<Patient>) => {
     try {
-      if (editing) {
-        await updatePatient(editing.id, payload);
-      } else {
-        await createPatient(payload);
-      }
+      const res = editing
+        ? await updatePatient(editing.id, payload)
+        : await createPatient(payload);
+
       setDialogOpen(false);
-      fetchData();
+      setNotice({
+        open: true,
+        message: res?.message || (editing ? 'Paciente actualizado' : 'Paciente creado'),
+      });
+      await fetchData();
     } catch (e: any) {
       setError(e.message || 'No se pudo guardar');
     }
   };
 
+  const handleCloseNotice = (_e?: any, reason?: string) => {
+    if (reason === 'clickaway') return;
+    setNotice({ open: false, message: '' });
+  };
+
   return (
     <Paper sx={{ p: 2 }}>
+      <Snackbar
+        open={notice.open}
+        autoHideDuration={3000}
+        onClose={handleCloseNotice}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseNotice} severity="success" variant="filled" sx={{ width: '100%' }}>
+          {notice.message}
+        </Alert>
+      </Snackbar>
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
         <TextField
           size="small"
