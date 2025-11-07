@@ -102,6 +102,12 @@ export default function PatientAnalysesPage() {
         }
     };
 
+
+    useEffect(() => {
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patientId]);
+
     useEffect(() => {
         if (!patientId) return;
         getPatient(patientId).then(setPatient).catch(() => setPatient(null));
@@ -195,7 +201,7 @@ export default function PatientAnalysesPage() {
         <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                    <Link component={RouterLink} to="/" underline="none">
+                    <Link component={RouterLink} to="/patients" underline="none">
                         <Button startIcon={<ArrowBackIcon />}>Volver</Button>
                     </Link>
                     <Typography variant="h5" fontWeight={700}>

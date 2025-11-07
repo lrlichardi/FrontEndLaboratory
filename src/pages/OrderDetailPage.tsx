@@ -1,0 +1,367 @@
+import { useEffect, useState, Fragment } from 'react';
+import { useParams, Link as RouterLink } from 'react-router-dom';
+import {
+  Alert, Box, Button, Card, CardContent, Chip, Grid, Link,
+  Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
+  TableRow, TextField, Typography, IconButton, Collapse
+} from '@mui/material';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import { getOrder, updateAnalytesBulk, generateOrderReport, type TestOrder, type OrderItemAnalyte } from '../api';
+
+type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string };
+
+export default function OrderDetailPage() {
+  const { orderId = '' } = useParams();
+  const [order, setOrder] = useState<TestOrder | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [drafts, setDrafts] = useState<Record<string, DraftVal>>({});
+  const dirty = Object.keys(drafts).length > 0;
+  const [downloading, setDownloading] = useState(false);
+
+  const toggle = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
+
+  const fetchOrder = async () => {
+    if (!orderId) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await getOrder(orderId);
+      setOrder(data);
+    } catch (e: any) {
+      setError(e.message || 'Error cargando el análisis');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    if (!order) return;
+    try {
+      setDownloading(true);
+      const blob = await generateOrderReport(order.id);
+
+      // Crear URL del blob y descargar
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `informe-${order.orderNumber || order.id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Limpiar
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      setError(e.message || 'No se pudo generar el informe');
+    } finally {
+      setDownloading(false);
+    }
+  };
+  useEffect(() => {
+    fetchOrder();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
+
+  const handleSaveAll = async () => {
+    if (!order || !dirty) return;
+    try {
+      setSaving(true);
+      const updates = Object.values(drafts).map(d => {
+        const kind = (d.kind || 'NUMERIC').toUpperCase();
+        const raw = d.value?.trim?.() ?? '';
+        return {
+          orderItemId: d.orderItemId,
+          analyteId: d.analyteId,
+          value: kind === 'NUMERIC' ? (raw === '' ? null : Number(raw)) : (raw === '' ? null : raw),
+        };
+      });
+      await updateAnalytesBulk(order.id, updates);
+      setDrafts({});
+      await fetchOrder();
+    } catch (e: any) {
+      setError(e.message || 'No se pudo guardar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDiscard = () => setDrafts({});
+
+  const handleDelete = async (itemId: string) => {
+    if (!window.confirm('¿Estás seguro de eliminar este estudio?')) return;
+    // Aquí debes implementar la llamada a tu API para eliminar
+    // await deleteOrderItem(itemId);
+    // await fetchOrder();
+    console.log('Eliminar item:', itemId);
+  };
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <Typography>Cargando...</Typography>
+      </Box>
+    );
+  }
+
+  if (!order) {
+    return (
+      <Box>
+        {error && <Alert severity="error">{error}</Alert>}
+        <Typography>No se encontró el análisis</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box>
+      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+        <Link component={RouterLink} to={`/patients/${order.patientId}/analyses`} underline="none">
+          <Button startIcon={<ArrowBackIcon />}>Volver</Button>
+        </Link>
+        <Typography variant="h4" fontWeight={700}>
+          Detalle del Análisis
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        <Stack direction="row" spacing={1}>
+          {/* NUEVO BOTÓN DE DESCARGA */}
+          <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadReport}
+            disabled={downloading}
+          >
+            {downloading ? 'Generando...' : 'Descargar PDF'}
+          </Button>
+
+          <Button variant="outlined" disabled={!dirty || saving} onClick={handleDiscard}>
+            Deshacer
+          </Button>
+          <Button variant="contained" disabled={!dirty || saving} onClick={handleSaveAll}>
+            {saving ? 'Guardando…' : 'Guardar cambios'}
+          </Button>
+        </Stack>
+      </Stack>
+
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Grid container spacing={2}>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">N° de Orden</Typography>
+              <Typography variant="body1" fontWeight={600}>{order.orderNumber || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Título</Typography>
+              <Typography variant="body1" fontWeight={600}>{order.title || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Médico</Typography>
+              <Typography variant="body1" fontWeight={600}>{order.doctor?.fullName || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Fecha</Typography>
+              <Typography variant="body1" fontWeight={600}>
+                {new Date(order.createdAt).toLocaleDateString('es-AR')}
+              </Typography>
+            </Grid>
+            {order.notes && (
+              <Grid item xs={12}>
+                <Typography variant="caption" color="text.secondary">Notas</Typography>
+                <Typography variant="body1">{order.notes}</Typography>
+              </Grid>
+            )}
+          </Grid>
+        </CardContent>
+      </Card>
+
+      <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>
+        Estudios ({order.items.length})
+      </Typography>
+
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell width={48} />
+              <TableCell width={120}><strong>Código</strong></TableCell>
+              <TableCell><strong>Ítem</strong></TableCell>
+              <TableCell width={150}><strong>Resultado</strong></TableCell>
+              <TableCell width={100}><strong>Unidad</strong></TableCell>
+              <TableCell width={150}><strong>Rango Ref.</strong></TableCell>
+              <TableCell width={100} align="center"><strong>Acciones</strong></TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {order.items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                  No hay estudios en este análisis
+                </TableCell>
+              </TableRow>
+            ) : (
+              order.items.map((item) => {
+                const hasMultipleItems = item.analytes.length > 1;
+                const open = !!expanded[item.id];
+
+                // Si solo tiene 1 item, mostrarlo directamente SIN acordeón
+                if (!hasMultipleItems && item.analytes.length === 1) {
+                  const a = item.analytes[0];
+                  const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+                  const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
+                  const current = drafts[a.id]?.value ?? String(baseShown ?? '');
+                  const isEdited = !!drafts[a.id];
+
+                  return (
+                    <TableRow key={item.id} hover>
+                      <TableCell width={48} />
+                      <TableCell width={120}>
+                        <code style={{ fontWeight: 600 }}>{item.examType.code}</code>
+                      </TableCell>
+                      <TableCell>{a.itemDef.label}</TableCell>
+                      <TableCell width={150}>
+                        <TextField
+                          size="small"
+                          type={kind === 'NUMERIC' ? 'number' : 'text'}
+                          value={current}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setDrafts((d) => ({
+                              ...d,
+                              [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
+                            }));
+                          }}
+                          placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                          fullWidth
+                          sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                        />
+                      </TableCell>
+                      <TableCell width={100}>
+                        <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                      </TableCell>
+                      <TableCell width={150}>
+                        <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                      </TableCell>
+                      <TableCell width={100} align="center">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+
+                // Si tiene múltiples items, usar acordeón
+                return (
+                  <Fragment key={item.id}>
+                    <TableRow hover>
+                      <TableCell width={48}>
+                        <IconButton size="small" onClick={() => toggle(item.id)}>
+                          {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                        </IconButton>
+                      </TableCell>
+                      <TableCell width={120}>
+                        <code style={{ fontWeight: 600 }}>{item.examType.code}</code>
+                      </TableCell>
+                      <TableCell>{item.examType.name}</TableCell>
+                      <TableCell colSpan={3} sx={{ color: 'text.secondary' }}>
+                        {open ? '—' : 'Click en la flecha para ver ítems'}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDelete(item.id)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+
+                    <TableRow>
+                      <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                        <Collapse in={open} timeout="auto" unmountOnExit>
+                          <Box sx={{ m: 1 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                              Ítems del código
+                            </Typography>
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell><strong>Ítem</strong></TableCell>
+                                  <TableCell width={160}><strong>Resultado</strong></TableCell>
+                                  <TableCell width={100}><strong>Unidad</strong></TableCell>
+                                  <TableCell width={160}><strong>Rango Ref.</strong></TableCell>
+                                  <TableCell width={120} align="center"><strong>Estado</strong></TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                {item.analytes.map((a: OrderItemAnalyte) => {
+                                  const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+                                  const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
+                                  const current = drafts[a.id]?.value ?? String(baseShown ?? '');
+                                  const isEdited = !!drafts[a.id];
+
+                                  return (
+                                    <TableRow key={a.id}>
+                                      <TableCell>{a.itemDef.label}</TableCell>
+                                      <TableCell>
+                                        <TextField
+                                          size="small"
+                                          type={kind === 'NUMERIC' ? 'number' : 'text'}
+                                          value={current}
+                                          onChange={(e) => {
+                                            const v = e.target.value;
+                                            setDrafts((d) => ({
+                                              ...d,
+                                              [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
+                                            }));
+                                          }}
+                                          placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                                          fullWidth
+                                          sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                        />
+                                      </TableCell>
+                                      <TableCell>
+                                        <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                                      </TableCell>
+                                      <TableCell align="center">
+                                        <Chip
+                                          size="small"
+                                          color={a.status === 'DONE' ? 'success' : 'warning'}
+                                          label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
+                                        />
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </Box>
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  </Fragment>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+}

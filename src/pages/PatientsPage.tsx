@@ -40,6 +40,12 @@ export default function PatientsPage() {
       filterable: false,
       renderCell: (params) => (
         <Stack direction="row" spacing={1}>
+          <Tooltip title="Ver análisis">
+            <IconButton onClick={() => navigate(`/patients/${params.row.id}/analyses`)} size="small" color="primary">
+              {/* puedes usar una lupa o un beaker */}
+              <SearchIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
           <Tooltip title="Editar">
             <IconButton onClick={() => handleEdit(params.row)} size="small">
               <EditIcon fontSize="small" />
@@ -48,12 +54,6 @@ export default function PatientsPage() {
           <Tooltip title="Eliminar">
             <IconButton onClick={() => handleDelete(params.row)} size="small" color="error">
               <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="Ver análisis">
-            <IconButton onClick={() => navigate(`/patients/${params.row.id}/analyses`)} size="small" color="primary">
-              {/* puedes usar una lupa o un beaker */}
-              <SearchIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         </Stack>

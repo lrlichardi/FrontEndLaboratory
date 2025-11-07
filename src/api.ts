@@ -58,7 +58,6 @@ export async function deletePatient(id: string): Promise<void> {
   if (!res.ok) throw new Error('No se pudo eliminar el paciente');
 }
 
-// ... lo existente arriba
 
 export type ExamType = {
   id: string;
@@ -78,43 +77,11 @@ export type Result = {
   refRange?: string | null;
 };
 
-export type OrderItem = {
-  id: string;
-  status: string;
-  examTypeId: string;
-  examType: ExamType;
-  result?: Result | null;
-};
-
-export type TestOrder = {
-  id: string;
-  patientId: string;
-  orderNumber?: string | null;
-  title?: string | null;
-  notes?: string | null;
-  createdAt: string;
-  doctor?: { id: string; fullName: string } | null;
-  items: {
-    id: string;
-    examTypeId: string;
-    status: string;
-    examType: { id: string; code: string; name: string };
-    result?: { id: string; value: string; unit?: string | null; refRange?: string | null } | null;
-  }[];
-};
-
-
 export async function listOrders(patientId: string): Promise<TestOrder[]> {
   const url = new URL(`${BASE_URL}/orders`);
   url.searchParams.set('patientId', patientId);
   const r = await fetch(url.toString());
   if (!r.ok) throw new Error('Error cargando análisis');
-  return r.json();
-}
-
-export async function getOrder(id: string): Promise<TestOrder> {
-  const r = await fetch(`${BASE_URL}/orders/${id}`);
-  if (!r.ok) throw new Error('Orden no encontrada');
   return r.json();
 }
 
@@ -177,4 +144,109 @@ export async function getPatient(id: string): Promise<Patient> {
   const r = await fetch(`${BASE_URL}/patients/${id}`);
   if (!r.ok) throw new Error('No se pudo cargar el paciente');
   return r.json();
+}
+
+export async function fetchExamItemsByCode(code: string): Promise<{ examType: ExamType; items: ExamItemDef[] }> {
+  const r = await fetch(`${BASE_URL}/exam-item-def?code=${encodeURIComponent(code)}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function createExamItemDef(input: {
+  code: string; key: string; label: string; unit?: string; kind?: string; sortOrder?: number; refText?: string | null; 
+}): Promise<ExamItemDef> {
+  const r = await fetch(`${BASE_URL}/exam-item-def`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function updateExamItemDef(id: string, patch: Partial<Pick<ExamItemDef, 'key'|'label'|'unit'|'kind'|'sortOrder'|'refText'>>): Promise<ExamItemDef> {
+  const r = await fetch(`${BASE_URL}/exam-item-def/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function deleteExamItemDef(id: string): Promise<void> {
+  const r = await fetch(`${BASE_URL}/exam-item-def/${id}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+export type ExamItemDef = { id: string; key: string; label: string; unit?: string | null; kind: string; sortOrder: number;refText?: string | null; };
+
+export type OrderItemAnalyte = {
+  id: string;
+  orderItemId: string;
+  itemDefId: string;
+  valueNum?: number | null;
+  valueText?: string | null;
+  unit?: string | null;
+  status: string;
+  itemDef: ExamItemDef;
+};
+
+export type OrderItem = {
+  id: string;
+  examTypeId: string;
+  examType: { code: string; name: string };
+  analytes: OrderItemAnalyte[];
+};
+
+export type TestOrder = {
+  id: string;
+  patientId: string;
+  orderNumber?: string | null;
+  title?: string | null;
+  doctor?: { fullName?: string | null } | null;
+  createdAt: string;
+  notes?: string | null;
+  items: OrderItem[];
+};
+
+export async function getOrder(id: string): Promise<TestOrder> {
+  const r = await fetch(`${BASE_URL}/orders/${id}`);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// export async function updateOrderAnalyte(orderItemId: string, analyteId: string, value: string | number | null) {
+//   const r = await fetch(`${BASE_URL}/orders/order-items/${orderItemId}/analytes/${analyteId}`, {
+//     method: 'PUT',
+//     headers: { 'Content-Type': 'application/json' },
+//     body: JSON.stringify({ value }),
+//   });
+//   if (!r.ok) throw new Error(await r.text());
+//   return r.json();
+// }
+
+export async function updateAnalytesBulk(orderId: string, updates: {
+  orderItemId: string; analyteId: string; value: string | number | null;
+}[]) {
+  const r = await fetch(`${BASE_URL}/orders/${orderId}/analytes/bulk`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ updates }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+// api.ts
+export async function generateOrderReport(orderId: string): Promise<Blob> {
+  const response = await fetch(`${BASE_URL}/orders/${orderId}/report`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    throw new Error('Error generando el informe');
+  }
+
+  return await response.blob();
 }

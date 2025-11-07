@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { TextField } from '@mui/material';
+import { TextField, Box } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { getNomencladorAll, type Nomen } from '../api';
 
@@ -23,7 +23,7 @@ export default function NomencladorPage() {
   ];
 
   return (
-    <>
+    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
       <TextField
         label="Buscar"
         size="small"
@@ -34,6 +34,6 @@ export default function NomencladorPage() {
       <div style={{ height: 520 }}>
         <DataGrid rows={filtered} columns={cols} getRowId={(r) => String(r.codigo)} />
       </div>
-    </>
+    </Box>
   );
 }

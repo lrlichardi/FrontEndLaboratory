@@ -13,13 +13,14 @@ const links = [
   { to: '/', label: 'Inicio', icon: <HomeIcon />, exact: true },
   { to: '/patients', label: 'Pacientes', icon: <PeopleIcon /> },
   { to: '/nomenclador', label: 'Nomenclador', icon: <ScienceIcon /> },
+  { to: '/exam-items', label: 'ExamItems', icon: <ScienceIcon /> },
 ];
 
 export default function AppNav() {
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <AppBar position="sticky" elevation={1}>
         <Toolbar>
           <IconButton edge="start" color="inherit" onClick={() => setOpen(true)} sx={{ display: { sm: 'none' } }}>
@@ -27,7 +28,7 @@ export default function AppNav() {
           </IconButton>
 
           <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Admin Pacientes – Lab
+            Admin Pacientes – Maria Fatima Perez MP:1094
           </Typography>
 
           {/* Desktop */}
@@ -71,9 +72,9 @@ export default function AppNav() {
       </Drawer>
 
       {/* Contenido de cada página */}
-      <Container sx={{ py: 2 }}>
+      <Box sx={{ flexGrow: 1, py: 2, px: 3 }}>
         <Outlet />
-      </Container>
-    </>
+      </Box>
+    </Box>
   );
 }
