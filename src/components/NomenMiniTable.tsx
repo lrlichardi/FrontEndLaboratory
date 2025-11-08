@@ -37,8 +37,8 @@ export default function NomenMiniTable({
                 No hay códigos seleccionados.
               </TableCell>
             </TableRow>
-          ) : rows.map(r => (
-            <TableRow key={r.codigo}>
+          ) : rows.map((r, index) => (
+            <TableRow key={`${r.codigo}-${index}`}>
               <TableCell><code>{r.codigo}</code></TableCell>
               <TableCell>{r.determinacion}</TableCell>
               <TableCell align="right">{r.ub}</TableCell>

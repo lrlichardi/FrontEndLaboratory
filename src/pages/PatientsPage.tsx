@@ -24,7 +24,7 @@ export default function PatientsPage() {
     open: false,
     message: '',
   });
-
+ console.log(rows)
   const navigate = useNavigate();
 
   const cols: GridColDef[] = useMemo(() => [
@@ -36,6 +36,7 @@ export default function PatientsPage() {
     { field: 'phone', headerName: 'Teléfono', flex: 1, minWidth: 140 },
     { field: 'email', headerName: 'Email', flex: 1.2, minWidth: 180 },
     { field: 'address', headerName: 'Dirección', flex: 1.4, minWidth: 200 },
+    { field: 'obraSocial', headerName: 'Obra Social', flex: 1.4, minWidth: 200 },
     {
       field: 'actions',
       headerName: 'Acciones',

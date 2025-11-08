@@ -8,12 +8,17 @@ import MenuIcon from '@mui/icons-material/Menu';
 import HomeIcon from '@mui/icons-material/Home';
 import PeopleIcon from '@mui/icons-material/People';
 import ScienceIcon from '@mui/icons-material/Science';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety'
 
 const links = [
   { to: '/', label: 'Inicio', icon: <HomeIcon />, exact: true },
   { to: '/patients', label: 'Pacientes', icon: <PeopleIcon /> },
   { to: '/nomenclador', label: 'Nomenclador', icon: <ScienceIcon /> },
   { to: '/exam-items', label: 'ExamItems', icon: <ScienceIcon /> },
+  { to: '/doctors', label: 'Doctores', icon: <MedicalServicesIcon /> },
+  { to: '/social-works', label: 'Obras Sociales', icon: <HealthAndSafetyIcon /> },
+
 ];
 
 export default function AppNav() {

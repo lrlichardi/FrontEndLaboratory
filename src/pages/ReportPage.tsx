@@ -200,11 +200,11 @@ export default function ReportPage() {
                       {capitalize(item.examType.name)}
                     </Box>
                   </Box>
-                  {isHemo && (
+                  {/* {isHemo && (
                     <Box sx={{ fontSize: '13px', color: '#666', fontStyle: 'italic', mb: 1.5, pl: 2 }}>
                       Contador Hematológico
                     </Box>
-                  )}
+                  )} */}
                 </>
               )}
 
@@ -217,7 +217,7 @@ export default function ReportPage() {
                   const renderRows = (rows: typeof item.analytes) => (
                     <Box component="tbody">
                       {rows.map((analyte) => {
-                        const value = analyte.valueNum ?? analyte.valueText ?? '—';
+                        const value = analyte.valueNum ?? analyte.valueText  ?? '—';
                         const unit = analyte.unit || analyte.itemDef.unit || '-';
                         const refRaw = shouldApplySexAgeFilter({
                           itemKey: analyte.itemDef.key,
@@ -232,11 +232,11 @@ export default function ReportPage() {
                         return (
                           <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
                             <Box component="td" sx={{ p: '12px' }}>{capitalize(analyte.itemDef.label)}</Box>
-                            <Box component="td" sx={{ p: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}>{value}</Box>
+                            <Box component="td" sx={{ p: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}>{typeof value === 'string' ? capitalize(value) : value}</Box>
                             <Box component="td" sx={{ p: '12px', textAlign: 'center', color: '#666' }}>{unit}</Box>
                             <Box component="td" sx={{ p: '12px', color: '#666', fontSize: '13px' }}>{refText || '—'}</Box>
                           </Box>
-                        );
+                            );
                       })}
                     </Box>
                   );
@@ -254,7 +254,7 @@ export default function ReportPage() {
                         <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
                           <Box component="thead">
                             <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
-                              <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>Detserminación</Box>
+                              <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>Determinación</Box>
                               <Box component="th" sx={{ p: '10px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>Resultado</Box>
                               <Box component="th" sx={{ p: '10px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>Unidad</Box>
                               <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>Valores de Referencia</Box>
@@ -271,7 +271,11 @@ export default function ReportPage() {
                       <Section title={urinePrefixTitle.EF} rows={groups.EF} />
                       <Section title={urinePrefixTitle.EQ} rows={groups.EQ} />
                       <Section title={urinePrefixTitle.EM} rows={groups.EM} />
-                      {groups.OTHER.length > 0 && <Section title="Otros" rows={groups.OTHER} />}
+                      {isUrineExamCode(item.examType.code) && (
+                    <Box sx={{ fontSize: '15px', color: '#030000ff', fontStyle: 'italic', mb: 1.5, pl: 1 }}>
+                      Muestra remitida
+                    </Box>
+                  )}
                     </Box>
                   );
                 })()

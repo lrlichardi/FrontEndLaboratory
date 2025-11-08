@@ -88,11 +88,11 @@ export async function listOrders(patientId: string): Promise<TestOrder[]> {
 
 export async function createOrder(payload: {
   patientId: string;
-  orderNumber?: string;
-  title?: string;
+  orderNumber?: string | null;
+  title?: string | null;
   doctorName?: string;
   examCodes: string[];
-  notes?: string;
+  notes?: string | null;
 }): Promise<TestOrder> {
   const resp = await fetch(`${BASE_URL}/orders`, {
     method: 'POST',
@@ -113,6 +113,13 @@ export async function upsertOrderItemResult(orderItemId: string, payload: {
   });
   if (!r.ok) throw new Error('No se pudo guardar el resultado');
   return r.json();
+}
+
+export async function deleteOrderItem(itemId: string): Promise<void> {
+  const r = await fetch(`${BASE_URL}/orders/items/${itemId}`, {
+    method: 'DELETE'
+  });
+  if (!r.ok) throw new Error('No se pudo eliminar el item');
 }
 
 export type Nomen = { codigo: number | string; determinacion: string; ub: number };
@@ -141,11 +148,40 @@ export async function deleteOrder(orderId: string) {
   if (!r.ok) throw new Error(await r.text());
 }
 
+export async function updateOrder(id: string, body: {
+  orderNumber?: string | null, title?: string | null; doctorName?: string | null; notes?: string | null;
+}) {
+  console.log(body)
+  const r = await fetch(`${BASE_URL}/orders/${id}`, { 
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+
+export async function addOrderItemsByCodes(id: string, codes: string[]) {
+  const r = await fetch(`${BASE_URL}/orders/${id}/items:addByCodes`, {  // 👈 Cambiado de /api/orders a ${BASE_URL}/orders
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ codes }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+
 export async function getPatient(id: string): Promise<Patient> {
   const r = await fetch(`${BASE_URL}/patients/${id}`);
   if (!r.ok) throw new Error('No se pudo cargar el paciente');
   return r.json();
 }
+
+// API de la carga de ITEMPAGE
+export type ExamItemDef = { id: string; key: string; label: string; unit?: string | null; kind: string; sortOrder: number; refText?: string | null; method?: string | null; };
+
 
 export async function fetchExamItemsByCode(code: string): Promise<{ examType: ExamType; items: ExamItemDef[] }> {
   const r = await fetch(`${BASE_URL}/exam-item-def?code=${encodeURIComponent(code)}`);
@@ -165,7 +201,7 @@ export async function createExamItemDef(input: {
   return r.json();
 }
 
-export async function updateExamItemDef(id: string, patch: Partial<Pick<ExamItemDef, 'key' | 'label' | 'unit' | 'kind' | 'sortOrder' | 'refText'>>): Promise<ExamItemDef> {
+export async function updateExamItemDef(id: string, patch: Partial<Pick<ExamItemDef, 'key' | 'label' | 'unit' | 'kind' | 'sortOrder' | 'refText' | 'method' >>): Promise<ExamItemDef> {
   const r = await fetch(`${BASE_URL}/exam-item-def/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -180,7 +216,6 @@ export async function deleteExamItemDef(id: string): Promise<void> {
   if (!r.ok) throw new Error(await r.text());
 }
 
-export type ExamItemDef = { id: string; key: string; label: string; unit?: string | null; kind: string; sortOrder: number; refText?: string | null; };
 
 export type OrderItemAnalyte = {
   id: string;
@@ -191,6 +226,7 @@ export type OrderItemAnalyte = {
   unit?: string | null;
   status: string;
   itemDef: ExamItemDef;
+  method?: string | null;
 };
 
 export type OrderItem = {
@@ -202,14 +238,14 @@ export type OrderItem = {
 
 export interface TestOrder {
   id: string;
-  orderNumber: string;
-  title?: string;
+  orderNumber: string | null;
+  title?: string | null;
   createdAt: string;
-  notes?: string;
+  notes?: string | null;
   patientId: string;
-  patient: Patient;  
+  patient: Patient;
   doctorId?: string;
-  doctor?: { fullName?: string | null } | null;   
+  doctor?: { fullName?: string | null } | null;
   items: OrderItem[];
 }
 
@@ -218,16 +254,6 @@ export async function getOrder(id: string): Promise<TestOrder> {
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
-
-// export async function updateOrderAnalyte(orderItemId: string, analyteId: string, value: string | number | null) {
-//   const r = await fetch(`${BASE_URL}/orders/order-items/${orderItemId}/analytes/${analyteId}`, {
-//     method: 'PUT',
-//     headers: { 'Content-Type': 'application/json' },
-//     body: JSON.stringify({ value }),
-//   });
-//   if (!r.ok) throw new Error(await r.text());
-//   return r.json();
-// }
 
 export async function updateAnalytesBulk(orderId: string, updates: {
   orderItemId: string; analyteId: string; value: string | number | null;
@@ -253,3 +279,100 @@ export async function generateOrderReport(orderId: string): Promise<Blob> {
 
   return await response.blob();
 }
+
+
+
+// api de doctores
+
+// Tipos
+export type Doctor = {
+  id: string;
+  fullName: string | null;
+  licenseNumber?: string | null;
+  phone?: string | null;
+  email?: string | null;
+};
+
+
+// Listar (opcional: ?q=)
+export async function listDoctors(q?: string): Promise<Doctor[]> {
+  const url = new URL(`${BASE_URL}/doctors`);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error('Error cargando pacientes');
+  return res.json();
+}
+
+export async function createDoctor(input: Partial<Doctor>): Promise<Doctor> {
+
+  const r = await fetch(`${BASE_URL}/doctors`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function updateDoctor(id: string, body: Partial<Doctor>): Promise<Doctor> {
+  const r = await fetch(`${BASE_URL}/doctors/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  console.log(body)
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+export async function deleteDoctor(id: string): Promise<void> {
+  const r = await fetch(`${BASE_URL}/doctors/${id}`, { method: 'DELETE' });
+  if (!r.ok) throw new Error(await r.text());
+}
+
+// OBRAS SSOCIALES
+
+export type SocialWork = {
+  id: string;
+  name: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export async function listSocialWorks(query = '', page = 1, pageSize = 10): Promise<{ data: SocialWork[]; total: number }> {
+  const qs = new URLSearchParams({ query, page: String(page), pageSize: String(pageSize) });
+  const res = await fetch(`${BASE_URL}/social-works?${qs.toString()}`);
+  if (!res.ok) throw new Error('Error cargando obras sociales');
+  return res.json();
+}
+
+export async function createSocialWork(payload: Pick<SocialWork, 'name'>) {
+  const res = await fetch(`${BASE_URL}/social-works`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || 'No se pudo crear');
+  return data;
+}
+
+export async function updateSocialWork(id: string, payload: Pick<SocialWork, 'name'>) {
+  const res = await fetch(`${BASE_URL}/social-works/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || 'No se pudo actualizar');
+  return data;
+}
+
+export async function deleteSocialWork(id: string) {
+  const res = await fetch(`${BASE_URL}/social-works/${id}`, { method: 'DELETE' });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.message || 'No se pudo eliminar');
+  return data;
+}
+
+
+

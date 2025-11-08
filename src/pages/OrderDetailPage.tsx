@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink } from 'react-router-dom';
 import {
   Alert, Box, Button, Card, CardContent, Chip, Grid, Link,
   Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, Typography, IconButton, Collapse
+  TableRow, TextField, Typography, IconButton, Collapse, MenuItem
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -67,28 +67,56 @@ export default function OrderDetailPage() {
 
   useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
-  const handleSaveAll = async () => {
-    if (!order || !dirty) return;
-    try {
-      setSaving(true);
-      const updates = Object.values(drafts).map(d => {
-        const kind = (d.kind || 'NUMERIC').toUpperCase();
-        const raw = d.value?.trim?.() ?? '';
-        return {
-          orderItemId: d.orderItemId,
-          analyteId: d.analyteId,
-          value: kind === 'NUMERIC' ? (raw === '' ? null : Number(raw)) : (raw === '' ? null : raw),
-        };
-      });
-      await updateAnalytesBulk(order.id, updates);
-      setDrafts({});
-      await fetchOrder();
-    } catch (e: any) {
-      setError(e.message || 'No se pudo guardar');
-    } finally {
-      setSaving(false);
+ const handleSaveAll = async () => {
+  if (!order) return;
+  try {
+    setSaving(true);
+
+    // 1) Drafts -> updates
+    const updates = Object.values(drafts).map(d => {
+      const kind = (d.kind || 'NUMERIC').toUpperCase();
+      const raw = (typeof d.value === 'string' ? d.value.trim() : d.value) as string | number;
+      return {
+        orderItemId: d.orderItemId,
+        analyteId: d.analyteId,
+        value: kind === 'NUMERIC'
+          ? (raw === '' ? null : Number(raw))
+          : (raw === '' ? null : (raw as string)),
+      };
+    });
+
+    // 2) Agregar "No contiene" por defecto a EQ sin valor ni borrador
+    const already = new Set(updates.map(u => u.analyteId));
+    for (const item of order.items) {
+      if (!isUrineExamCode(item.examType.code)) continue;
+      const { EQ } = groupUrineAnalytes(item.analytes);
+      for (const a of EQ) {
+        const hasValue = (a.valueText && a.valueText.trim() !== '') || a.valueNum != null;
+        if (!hasValue && !already.has(a.id)) {
+          updates.push({
+            orderItemId: item.id,
+            analyteId: a.id,
+            value: 'No contiene',
+          });
+        }
+      }
     }
-  };
+
+    if (updates.length === 0) {
+      setSaving(false);
+      return;
+    }
+
+    await updateAnalytesBulk(order.id, updates);
+    setDrafts({});
+    await fetchOrder();
+  } catch (e: any) {
+    setError(e.message || 'No se pudo guardar');
+  } finally {
+    setSaving(false);
+  }
+};
+
 
   const handleDiscard = () => setDrafts({});
 
@@ -168,7 +196,7 @@ export default function OrderDetailPage() {
             </Grid>
             {order.notes && (
               <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">Notas</Typography>
+                <Typography variant="caption" color="text.secondary">Observaciones</Typography>
                 <Typography variant="body1">{order.notes}</Typography>
               </Grid>
             )}
@@ -291,6 +319,7 @@ export default function OrderDetailPage() {
                                   // Orina completa (660711) agrupada EF/EQ/EM
                                   (() => {
                                     const groups = groupUrineAnalytes(item.analytes);
+                                    const EQ_OPTIONS = ['No contiene' , 'Contiene', 'Contiene +' ,'Contiene ++','Contiene +++' , 'Contiene ++++'] as const;
 
                                     const SectionRow = ({ title }: { title: string }) => (
                                       <TableRow>
@@ -300,63 +329,113 @@ export default function OrderDetailPage() {
                                       </TableRow>
                                     );
 
-                                    const renderRows = (rows: typeof item.analytes) => rows.map((a: OrderItemAnalyte) => {
-                                      const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
-                                      const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
-                                      const current = drafts[a.id]?.value ?? String(baseShown ?? '');
-                                      const isEdited = !!drafts[a.id];
+                                    const renderRows = (rows: typeof item.analytes, mode: 'EF' | 'EQ' | 'EM') =>
+                                      rows.map((a: OrderItemAnalyte) => {
+                                        const kind = (a.itemDef.kind || 'NUMERIC').toUpperCase();
+                                        const baseShown = (a.valueNum ?? a.valueText ?? '') as string | number;
 
-                                      return (
-                                        <TableRow key={a.id}>
-                                          <TableCell>{capitalize(a.itemDef.label)}</TableCell>
-                                          <TableCell>
-                                            <TextField
-                                              size="small"
-                                              type={kind === 'NUMERIC' ? 'number' : 'text'}
-                                              value={current}
-                                              onChange={(e) => {
-                                                const v = e.target.value;
-                                                setDrafts((d) => ({
-                                                  ...d,
-                                                  [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
-                                                }));
-                                              }}
-                                              placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
-                                              fullWidth
-                                              sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
-                                            />
-                                          </TableCell>
-                                          <TableCell><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
-                                          <TableCell><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
-                                          <TableCell align="center">
-                                            <Chip
-                                              size="small"
-                                              color={a.status === 'DONE' ? 'success' : 'warning'}
-                                              label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
-                                            />
-                                          </TableCell>
-                                        </TableRow>
-                                      );
-                                    });
+                                        // Valor actual desde drafts o DB
+                                        const currentDraft = drafts[a.id]?.value;
+                                        const currentText = (currentDraft ?? (typeof baseShown === 'string' ? baseShown : '')).toString();
+
+                                        // Para EQ usamos combo; si no coincide con opciones, mostramos vacío
+                                        const eqSelectValue =
+                                          currentText === 'Contiene' || currentText === 'No contiene' ? currentText : 'No contiene';
+
+                                        const isEdited = !!drafts[a.id];
+
+                                        return (
+                                          <TableRow key={a.id}>
+                                            <TableCell>{capitalize(a.itemDef.label)}</TableCell>
+
+                                            <TableCell width={160}>
+                                              {mode === 'EQ' ? (
+                                                <TextField
+                                                  select
+                                                  size="small"
+                                                  value={eqSelectValue}
+                                                  onChange={(e) => {
+                                                    const v = e.target.value as string; 
+                                                    setDrafts((d) => ({
+                                                      ...d,
+                                                      [a.id]: {
+                                                        orderItemId: item.id,
+                                                        analyteId: a.id,
+                                                        kind: a.itemDef.kind ?? 'TEXT',
+                                                        value: v,
+                                                      },
+                                                    }));
+                                                  }}
+                                                  fullWidth
+                                                  sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                                >
+                                                  {EQ_OPTIONS.map((opt) => (
+                                                    <MenuItem key={opt} value={opt}>
+                                                      {opt}
+                                                    </MenuItem>
+                                                  ))}
+                                                </TextField>
+                                              ) : (
+                                                <TextField
+                                                  size="small"
+                                                  type={kind === 'NUMERIC' ? 'number' : 'text'}
+                                                  value={currentDraft ?? String(baseShown ?? '')}
+                                                  onChange={(e) => {
+                                                    const v = e.target.value;
+                                                    setDrafts((d) => ({
+                                                      ...d,
+                                                      [a.id]: {
+                                                        orderItemId: item.id,
+                                                        analyteId: a.id,
+                                                        kind: a.itemDef.kind,
+                                                        value: v,
+                                                      },
+                                                    }));
+                                                  }}
+                                                  placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                                                  fullWidth
+                                                  sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                                />
+                                              )}
+                                            </TableCell>
+
+                                            <TableCell width={100}>
+                                              <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                                            </TableCell>
+                                            <TableCell width={160}>
+                                              <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                                            </TableCell>
+                                            <TableCell width={120} align="center">
+                                              <Chip
+                                                size="small"
+                                                color={a.status === 'DONE' ? 'success' : 'warning'}
+                                                label={a.status === 'DONE' ? 'COMPLETADO' : 'PENDIENTE'}
+                                              />
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      });
 
                                     return (
                                       <>
-                                        {groups.EF.length > 0 && (<>
-                                          <SectionRow title={urinePrefixTitle.EF} />
-                                          {renderRows(groups.EF)}
-                                        </>)}
-                                        {groups.EQ.length > 0 && (<>
-                                          <SectionRow title={urinePrefixTitle.EQ} />
-                                          {renderRows(groups.EQ)}
-                                        </>)}
-                                        {groups.EM.length > 0 && (<>
-                                          <SectionRow title={urinePrefixTitle.EM} />
-                                          {renderRows(groups.EM)}
-                                        </>)}
-                                        {groups.OTHER.length > 0 && (<>
-                                          <SectionRow title="Otros" />
-                                          {renderRows(groups.OTHER)}
-                                        </>)}
+                                        {groups.EF.length > 0 && (
+                                          <>
+                                            <SectionRow title={urinePrefixTitle.EF} />
+                                            {renderRows(groups.EF, 'EF')}
+                                          </>
+                                        )}
+                                        {groups.EQ.length > 0 && (
+                                          <>
+                                            <SectionRow title={urinePrefixTitle.EQ} />
+                                            {renderRows(groups.EQ, 'EQ')}
+                                          </>
+                                        )}
+                                        {groups.EM.length > 0 && (
+                                          <>
+                                            <SectionRow title={urinePrefixTitle.EM} />
+                                            {renderRows(groups.EM, 'EM')}
+                                          </>
+                                        )}
                                       </>
                                     );
                                   })()
@@ -371,7 +450,7 @@ export default function OrderDetailPage() {
                                     return (
                                       <TableRow key={a.id}>
                                         <TableCell>{capitalize(a.itemDef.label)}</TableCell>
-                                        <TableCell>
+                                        <TableCell width={160}>
                                           <TextField
                                             size="small"
                                             type={kind === 'NUMERIC' ? 'number' : 'text'}
@@ -388,9 +467,13 @@ export default function OrderDetailPage() {
                                             sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
                                           />
                                         </TableCell>
-                                        <TableCell><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
-                                        <TableCell><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
-                                        <TableCell align="center">
+                                        <TableCell width={100}>
+                                          <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                                        </TableCell>
+                                        <TableCell width={160}>
+                                          <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                                        </TableCell>
+                                        <TableCell width={120} align="center">
                                           <Chip
                                             size="small"
                                             color={a.status === 'DONE' ? 'success' : 'warning'}
@@ -401,6 +484,7 @@ export default function OrderDetailPage() {
                                     );
                                   })
                                 )}
+
                               </TableBody>
                             </Table>
                           </Box>

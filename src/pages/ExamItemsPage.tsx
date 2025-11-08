@@ -13,7 +13,9 @@ import {
   type ExamItemDef
 } from '../api';
 
-const KINDS = ['NUMERIC', 'TEXT', 'BOOLEAN', 'ENUM'];
+const KINDS = ['NUMERIC','TEXT', 'BOOLEAN', 'ENUM'];
+
+const method = ['Enzimático', 'Humedo', 'ELISA', 'Quimioluminiscencia', 'Turbidimetría' , 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico' ];
 
 export default function ExamItemsPage() {
   const [code, setCode] = useState('');
@@ -26,7 +28,7 @@ export default function ExamItemsPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ExamItemDef | null>(null);
-  const [form, setForm] = useState({ key: '', label: '', unit: '', kind: 'NUMERIC', sortOrder: 0, refText: '' });
+  const [form, setForm] = useState({ key: '', label: '', unit: '', kind: 'NUMERIC', method:'Enzimático' ,sortOrder: 0, refText: ''});
   
   const load = async () => {
     if (!/^\d{5,7}$/.test(code.trim())) { setErr('Ingresá un código válido (5–7 dígitos)'); return; }
@@ -45,7 +47,7 @@ export default function ExamItemsPage() {
   };
 
   useEffect(() => { /* opcional: autoload si querés */ }, []);
-
+ console.log(rows);
   const cols: GridColDef[] = useMemo(() => [
     { field: 'sortOrder', headerName: 'Orden', width: 90 },
     { field: 'key', headerName: 'Clave', minWidth: 140, flex: 1 },
@@ -53,6 +55,7 @@ export default function ExamItemsPage() {
     { field: 'unit', headerName: 'Unidad', minWidth: 120 },
     { field: 'kind', headerName: 'Tipo', minWidth: 120 },
     { field: 'refText', headerName: 'V. ref', minWidth: 160, flex: 1 },
+    { field: 'method', headerName: 'Metodo', minWidth: 160, flex: 1 },
     {
       field: 'actions', headerName: 'Acciones', minWidth: 140, sortable: false, filterable: false,
       renderCell: (p) => (
@@ -61,7 +64,7 @@ export default function ExamItemsPage() {
             setEditing(p.row as ExamItemDef);
             setForm({
               key: p.row.key, label: p.row.label, unit: p.row.unit || '',
-              kind: p.row.kind || 'NUMERIC', sortOrder: p.row.sortOrder ?? 0,
+              kind: p.row.kind || 'NUMERIC', method: p.row.method || 'Enzimático' ,  sortOrder: p.row.sortOrder ?? 0,
               refText: p.row.refText || ''
             });
             setOpen(true);
@@ -82,7 +85,7 @@ export default function ExamItemsPage() {
 
   const onOpenNew = () => {
     setEditing(null);
-    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', sortOrder: rows.length, refText: '' });
+    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', method:'Enzimático',  sortOrder: rows.length, refText: '' });
     setOpen(true);
   };
 
@@ -100,6 +103,7 @@ export default function ExamItemsPage() {
           kind: form.kind,
           sortOrder: Number(form.sortOrder) || 0,
           refText: form.refText?.trim() || null,
+          method: form.method?.trim() || '',
         });
       } else {
         await createExamItemDef({
@@ -110,6 +114,7 @@ export default function ExamItemsPage() {
           kind: form.kind,
           sortOrder: Number(form.sortOrder) || 0,
           refText: form.refText?.trim() || null,
+          method: form.method?.trim(),
         });
       }
       setOpen(false);
@@ -185,7 +190,8 @@ export default function ExamItemsPage() {
                 onChange={e => setForm({ ...form, refText: e.target.value })}
                 fullWidth
                 multiline
-              /></Grid>
+              />
+              </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Tipo"
@@ -195,6 +201,18 @@ export default function ExamItemsPage() {
               >
                 {KINDS.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
               </TextField>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+              <TextField
+                label="Metodo"
+                select fullWidth
+                value={form.method}
+                onChange={e => setForm({ ...form, method: e.target.value })}
+              >
+                {method.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
+                
+              </TextField>
+              
             </Grid>
           </Grid>
         </DialogContent>

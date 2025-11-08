@@ -6,6 +6,9 @@ import AppNav from './layout/AppNav';
 import NomencladorPage from './pages/NomencladorPage';
 import ExamItemsPage from './pages/ExamItemsPage';
 import ReportPage from './pages/ReportPage';
+import DoctorsPage from './pages/DoctorsPage';
+import SocialWorksPage from './pages/SocialWorksPage';
+
 
 export default function App() {
   return (
@@ -18,6 +21,8 @@ export default function App() {
         <Route path="nomenclador" element={<NomencladorPage />} />
         <Route path="exam-items" element={<ExamItemsPage />} />
         <Route path="/orders/:orderId/report" element={<ReportPage />} />
+        <Route path="doctors" element={<DoctorsPage />} />
+        <Route path="social-works" element={<SocialWorksPage />} />
       </Route>
     </Routes>
   );
