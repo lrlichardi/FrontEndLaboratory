@@ -11,7 +11,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { getOrder, updateAnalytesBulk, generateOrderReport, type TestOrder, type OrderItemAnalyte } from '../api';
+import { getOrder, updateAnalytesBulk, generateOrderReport, deleteOrderItem, type TestOrder, type OrderItemAnalyte } from '../api';
 import { capitalize } from '../utils/utils';
 // agrupar orina
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
@@ -28,7 +28,7 @@ export default function OrderDetailPage() {
   const [drafts, setDrafts] = useState<Record<string, DraftVal>>({});
   const dirty = Object.keys(drafts).length > 0;
   const [downloading, setDownloading] = useState(false);
-
+  console.log(order)
   const toggle = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
   const fetchOrder = async () => {
@@ -67,64 +67,91 @@ export default function OrderDetailPage() {
 
   useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
- const handleSaveAll = async () => {
-  if (!order) return;
-  try {
-    setSaving(true);
+  const handleSaveAll = async () => {
+    if (!order) return;
+    try {
+      setSaving(true);
 
-    // 1) Drafts -> updates
-    const updates = Object.values(drafts).map(d => {
-      const kind = (d.kind || 'NUMERIC').toUpperCase();
-      const raw = (typeof d.value === 'string' ? d.value.trim() : d.value) as string | number;
-      return {
-        orderItemId: d.orderItemId,
-        analyteId: d.analyteId,
-        value: kind === 'NUMERIC'
-          ? (raw === '' ? null : Number(raw))
-          : (raw === '' ? null : (raw as string)),
-      };
-    });
+      // 1) Drafts -> updates
+      const updates = Object.values(drafts).map(d => {
+        const kind = (d.kind || 'NUMERIC').toUpperCase();
+        const raw = (typeof d.value === 'string' ? d.value.trim() : d.value) as string | number;
+        return {
+          orderItemId: d.orderItemId,
+          analyteId: d.analyteId,
+          value: kind === 'NUMERIC'
+            ? (raw === '' ? null : Number(raw))
+            : (raw === '' ? null : (raw as string)),
+        };
+      });
 
-    // 2) Agregar "No contiene" por defecto a EQ sin valor ni borrador
-    const already = new Set(updates.map(u => u.analyteId));
-    for (const item of order.items) {
-      if (!isUrineExamCode(item.examType.code)) continue;
-      const { EQ } = groupUrineAnalytes(item.analytes);
-      for (const a of EQ) {
-        const hasValue = (a.valueText && a.valueText.trim() !== '') || a.valueNum != null;
-        if (!hasValue && !already.has(a.id)) {
-          updates.push({
-            orderItemId: item.id,
-            analyteId: a.id,
-            value: 'No contiene',
-          });
+      // 2) Agregar "No contiene" por defecto a EQ sin valor ni borrador
+      const already = new Set(updates.map(u => u.analyteId));
+      for (const item of order.items) {
+        if (!isUrineExamCode(item.examType.code)) continue;
+        const { EQ } = groupUrineAnalytes(item.analytes);
+        for (const a of EQ) {
+          const hasValue = (a.valueText && a.valueText.trim() !== '') || a.valueNum != null;
+          if (!hasValue && !already.has(a.id)) {
+            updates.push({
+              orderItemId: item.id,
+              analyteId: a.id,
+              value: 'No contiene',
+            });
+          }
         }
       }
-    }
 
-    if (updates.length === 0) {
+      if (updates.length === 0) {
+        setSaving(false);
+        return;
+      }
+
+      await updateAnalytesBulk(order.id, updates);
+      setDrafts({});
+      await fetchOrder();
+    } catch (e: any) {
+      setError(e.message || 'No se pudo guardar');
+    } finally {
       setSaving(false);
-      return;
     }
-
-    await updateAnalytesBulk(order.id, updates);
-    setDrafts({});
-    await fetchOrder();
-  } catch (e: any) {
-    setError(e.message || 'No se pudo guardar');
-  } finally {
-    setSaving(false);
-  }
-};
+  };
 
 
   const handleDiscard = () => setDrafts({});
 
   const handleDelete = async (itemId: string) => {
     if (!window.confirm('¿Estás seguro de eliminar este estudio?')) return;
-    // TODO: delete item en API
-    console.log('Eliminar item:', itemId);
+
+    // 1) Remoción optimista en UI
+    const deleted = order?.items.find(i => i.id === itemId);
+    if (deleted) {
+      // limpiar borradores de sus analitos
+      const analyteIds = deleted.analytes.map(a => a.id);
+      setDrafts(prev => {
+        const next = { ...prev };
+        for (const id of analyteIds) delete next[id];
+        return next;
+      });
+      // cerrar el acordeón si estaba abierto
+      setExpanded(prev => {
+        const { [itemId]: _, ...rest } = prev;
+        return rest;
+      });
+      // quitar el item de la grilla
+      setOrder(prev => prev ? { ...prev, items: prev.items.filter(i => i.id !== itemId) } : prev);
+    }
+
+    // 2) Llamada real al backend + sync final
+    try {
+      await deleteOrderItem(itemId);
+      await fetchOrder(); // opcional si ya hiciste la remoción optimista, pero asegura consistencia
+    } catch (e: any) {
+      setError(e.message || 'No se pudo eliminar');
+      await fetchOrder(); // rollback a la verdad del server si falló
+    }
   };
+
 
   if (loading) {
     return (
@@ -141,6 +168,55 @@ export default function OrderDetailPage() {
         <Typography>No se encontró el análisis</Typography>
       </Box>
     );
+  }
+
+
+  // CALCULO DE LOS ABS
+
+  const ABS_PAIRS = [
+    { pct: 'Eosinófilos', abs: 'Eosinófilos (Abs)' },
+    { pct: 'Basófilos', abs: 'Basófilos (Abs)' },
+    { pct: 'Linfocitos', abs: 'Linfocitos (Abs)' },
+    { pct: 'Monocitos', abs: 'Monocitos (Abs)' },
+  ];
+
+  function recomputeAbsForItem(
+    item: { id: string; analytes: any[] },
+    nextDrafts: Record<string, { orderItemId: string; analyteId: string; kind: string; value: string | number }>
+  ) {
+    const byLabel = (label: string) => item.analytes.find((a: any) => a.itemDef?.label === label);
+    const leuc = byLabel('Leucocitos');
+
+    const getNum = (a: any) => {
+      const raw = nextDrafts[a.id]?.value ?? (a.valueNum ?? '');
+      const n = parseFloat(String(raw));
+      return Number.isFinite(n) ? n : NaN;
+    };
+
+    const leucVal = leuc ? getNum(leuc) : NaN;
+
+    for (const pair of ABS_PAIRS) {
+      const pctA = byLabel(pair.pct);
+      const absA = byLabel(pair.abs);
+      if (!pctA || !absA) continue;
+
+      const pctVal = getNum(pctA);
+
+      if (Number.isFinite(leucVal) && Number.isFinite(pctVal)) {
+        const absVal = Math.round(leucVal * pctVal / 100); // /uL → entero
+        nextDrafts[absA.id] = {
+          orderItemId: item.id,
+          analyteId: absA.id,
+          kind: 'NUMERIC',
+          value: String(absVal),
+        };
+      } else {
+        // si falta alguno, limpiamos el draft del ABS para evitar arrastre
+        if (nextDrafts[absA.id]) delete nextDrafts[absA.id];
+      }
+    }
+
+    return nextDrafts;
   }
 
   return (
@@ -319,7 +395,7 @@ export default function OrderDetailPage() {
                                   // Orina completa (660711) agrupada EF/EQ/EM
                                   (() => {
                                     const groups = groupUrineAnalytes(item.analytes);
-                                    const EQ_OPTIONS = ['No contiene' , 'Contiene', 'Contiene +' ,'Contiene ++','Contiene +++' , 'Contiene ++++'] as const;
+                                    const EQ_OPTIONS = ['No contiene', 'Contiene', 'Contiene +', 'Contiene ++', 'Contiene +++', 'Contiene ++++'] as const;
 
                                     const SectionRow = ({ title }: { title: string }) => (
                                       <TableRow>
@@ -355,7 +431,7 @@ export default function OrderDetailPage() {
                                                   size="small"
                                                   value={eqSelectValue}
                                                   onChange={(e) => {
-                                                    const v = e.target.value as string; 
+                                                    const v = e.target.value as string;
                                                     setDrafts((d) => ({
                                                       ...d,
                                                       [a.id]: {
@@ -457,10 +533,19 @@ export default function OrderDetailPage() {
                                             value={current}
                                             onChange={(e) => {
                                               const v = e.target.value;
-                                              setDrafts((d) => ({
-                                                ...d,
-                                                [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
-                                              }));
+                                              setDrafts((d) => {
+                                                const next = {
+                                                  ...d,
+                                                  [a.id]: {
+                                                    orderItemId: item.id,
+                                                    analyteId: a.id,
+                                                    kind: a.itemDef.kind,
+                                                    value: v,
+                                                  },
+                                                };
+                                                // recalcular los (Abs) del MISMO item si aplica
+                                                return recomputeAbsForItem(item, next);
+                                              });
                                             }}
                                             placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
                                             fullWidth

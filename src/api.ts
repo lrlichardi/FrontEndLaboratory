@@ -12,6 +12,9 @@ export type Patient = {
   address?: string | null;
   obraSocial?: string | null;
   NumberObraSocial?: Number | null;
+  diabetico?: boolean | null;
+  tiroides?: boolean | null;
+  notes?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -49,7 +52,6 @@ export async function updatePatient(id: string, data: Partial<Patient>): Promise
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  console.log(res);
   if (!res.ok) throw new Error('No se pudo actualizar el paciente');
   return res.json();
 }
@@ -90,7 +92,7 @@ export async function createOrder(payload: {
   patientId: string;
   orderNumber?: string | null;
   title?: string | null;
-  doctorName?: string;
+  doctorId?: string;
   examCodes: string[];
   notes?: string | null;
 }): Promise<TestOrder> {
@@ -120,6 +122,7 @@ export async function deleteOrderItem(itemId: string): Promise<void> {
     method: 'DELETE'
   });
   if (!r.ok) throw new Error('No se pudo eliminar el item');
+  return r.json();
 }
 
 export type Nomen = { codigo: number | string; determinacion: string; ub: number };
@@ -149,9 +152,8 @@ export async function deleteOrder(orderId: string) {
 }
 
 export async function updateOrder(id: string, body: {
-  orderNumber?: string | null, title?: string | null; doctorName?: string | null; notes?: string | null;
+  orderNumber?: string | null, title?: string | null; doctorId?: string | null; notes?: string | null;
 }) {
-  console.log(body)
   const r = await fetch(`${BASE_URL}/orders/${id}`, { 
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -190,7 +192,7 @@ export async function fetchExamItemsByCode(code: string): Promise<{ examType: Ex
 }
 
 export async function createExamItemDef(input: {
-  code: string; key: string; label: string; unit?: string; kind?: string; sortOrder?: number; refText?: string | null;
+  code: string; key: string; label: string; unit?: string; kind?: string; sortOrder?: number; refText?: string | null; method?: string;
 }): Promise<ExamItemDef> {
   const r = await fetch(`${BASE_URL}/exam-item-def`, {
     method: 'POST',
@@ -319,7 +321,6 @@ export async function updateDoctor(id: string, body: Partial<Doctor>): Promise<D
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body)
   });
-  console.log(body)
   if (!r.ok) throw new Error(await r.text());
   return r.json();
 }
@@ -376,3 +377,48 @@ export async function deleteSocialWork(id: string) {
 
 
 
+// cuenta clientes
+
+// api.ts — funciones para cuenta de paciente
+export type AccountEntryKind = 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT'
+
+
+export type AccountEntry = {
+id: string
+patientId: string
+kind: AccountEntryKind
+amountCents: number
+description?: string | null
+testOrder?: { id: string; orderNumber: string | null } | null
+orderItem?: { id: string } | null
+createdAt: string
+}
+
+
+export async function getAccountSummary(patientId: string) {
+const r = await fetch(`${BASE_URL}/patients/${patientId}/account/summary`)
+if (!r.ok) throw new Error(await r.text())
+return r.json() as Promise<{ total: number; pagado: number; ajustes: number; saldoDeudor: number; tieneDeuda: boolean }>
+}
+
+
+export async function listAccountEntries(patientId: string) {
+const r = await fetch(`${BASE_URL}/patients/${patientId}/account/entries`)
+if (!r.ok) throw new Error(await r.text())
+return r.json() as Promise<AccountEntry[]>
+}
+
+
+export async function createAccountEntry(patientId: string, body: { kind: AccountEntryKind; amount: number | string; description?: string; testOrderId?: string | null; orderItemId?: string | null; }) {
+const r = await fetch(`${BASE_URL}/patients/${patientId}/account/entries`, {
+method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+})
+if (!r.ok) throw new Error(await r.text())
+return r.json() as Promise<AccountEntry>
+}
+
+
+export async function deleteAccountEntry(patientId: string, entryId: string) {
+const r = await fetch(`${BASE_URL}/patients/${patientId}/account/entries/${entryId}`, { method: 'DELETE' })
+if (!r.ok) throw new Error(await r.text())
+}

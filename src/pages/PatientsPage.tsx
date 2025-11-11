@@ -6,6 +6,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import type { Patient } from '../api';
 import { listPatients, createPatient, updatePatient, deletePatient } from '../api';
 import PatientFormDialog from '../components/PatientFormDialog';
@@ -24,7 +25,7 @@ export default function PatientsPage() {
     open: false,
     message: '',
   });
- console.log(rows)
+
   const navigate = useNavigate();
 
   const cols: GridColDef[] = useMemo(() => [
@@ -47,8 +48,12 @@ export default function PatientsPage() {
         <Stack direction="row" spacing={1}>
           <Tooltip title="Ver análisis">
             <IconButton onClick={() => navigate(`/patients/${params.row.id}/analyses`)} size="small" color="primary">
-              {/* puedes usar una lupa o un beaker */}
               <SearchIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Cuenta">
+            <IconButton onClick={() => navigate(`/patients/${params.row.id}/account`)} size="small" color="secondary" aria-label="ver-cuenta">
+              <AccountBalanceWalletIcon fontSize="small" />
             </IconButton>
           </Tooltip>
           <Tooltip title="Editar">

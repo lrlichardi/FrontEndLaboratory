@@ -15,7 +15,7 @@ import {
 
 const KINDS = ['NUMERIC','TEXT', 'BOOLEAN', 'ENUM'];
 
-const method = ['Enzimático', 'Humedo', 'ELISA', 'Quimioluminiscencia', 'Turbidimetría' , 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico' ];
+const method = ['-' ,'Enzimático', 'Cinético','Humedo', 'ELISA', 'Quimioluminiscencia', 'Calmagita' ,'Turbidimetría' , 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico', 'Arsenazo' ,'Aglutinación' ];
 
 export default function ExamItemsPage() {
   const [code, setCode] = useState('');
@@ -47,7 +47,7 @@ export default function ExamItemsPage() {
   };
 
   useEffect(() => { /* opcional: autoload si querés */ }, []);
- console.log(rows);
+
   const cols: GridColDef[] = useMemo(() => [
     { field: 'sortOrder', headerName: 'Orden', width: 90 },
     { field: 'key', headerName: 'Clave', minWidth: 140, flex: 1 },
@@ -95,7 +95,7 @@ export default function ExamItemsPage() {
       if (!/^\d{5,7}$/.test(code.trim())) { setErr('Ingresá un código válido'); return; }
 
       if (editing) {
-        console.log('updating', editing.id, form);
+        
         await updateExamItemDef(editing.id, {
           key: form.key.trim(),
           label: form.label.trim(),

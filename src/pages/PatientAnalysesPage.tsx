@@ -3,7 +3,7 @@ import { useParams, Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
   Link, Stack, TextField, Typography, Autocomplete, IconButton, Tooltip, Snackbar,
-  MenuItem, // 👈 agregado
+  MenuItem,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,18 +11,21 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-
+import BloodtypeIcon from '@mui/icons-material/Bloodtype';
+import BiotechIcon from '@mui/icons-material/Biotech';
 import StatusCell from '../components/StatusCell';
-import type { TestOrder, Nomen, Doctor } from '../api'; // 👈 Doctor
 import {
   getPatient, listOrders, createOrder, updateOrderStatus, deleteOrder,
   getNomencladorAll, Patient, updateOrder, addOrderItemsByCodes, deleteOrderItem,
-  listDoctors, // 👈 nuevo API
+  listDoctors, TestOrder, Nomen, Doctor, updatePatient
 } from '../api';
+import EditNoteIcon from '@mui/icons-material/EditNote';
 import type { OrderStatus } from '../utils/status';
 import NomenMiniTable from '../components/NomenMiniTable';
 import type { NomenRow } from '../components/NomenMiniTable';
 import { STATUS_LABEL } from '../utils/status';
+import FlagChip from '../components/FlagChip';
+
 
 export default function PatientAnalysesPage() {
   const { patientId = '' } = useParams();
@@ -37,20 +40,33 @@ export default function PatientAnalysesPage() {
   const [orderNumber, setOrderNumber] = useState('');
   const [title, setTitle] = useState('');
 
-  // 👉 ahora doctorName se elige desde un select con opciones del back
-  const [doctorName, setDoctorName] = useState('');
-
+  const [doctorId, setDoctorId] = useState('');
   const [nomenInput, setNomenInput] = useState('');
   const [codes, setCodes] = useState<string[]>([]);
   const [opts, setOpts] = useState<{ label: string; value: string }[]>([]);
   const [allNomen, setAllNomen] = useState<Nomen[] | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
-
+  const [methodPay, setmethodPay] = useState('');
   const [notice, setNotice] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [editingOrder, setEditingOrder] = useState<TestOrder | null>(null);
   const [existingByCode, setExistingByCode] = useState<Record<string, string>>({});
   const [toDelete, setToDelete] = useState<string[]>([]);
-
+  const [openNotes, setOpenNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState<string>('');
+  const [savingNotes, setSavingNotes] = useState(false);
+  const resetForm = () => {
+    setEditingOrder(null);
+    setOrderNumber('');
+    setTitle('');
+    setDoctorId('');
+    setmethodPay('');
+    setNotes('');
+    setCodes([]);
+    setExistingByCode({});
+    setToDelete([]);
+    setNomenInput('');
+    setOpts([]);
+  };
   // 👇 lista de médicos desde el back
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   useEffect(() => {
@@ -58,6 +74,9 @@ export default function PatientAnalysesPage() {
     // cargo doctores al abrir el diálogo
     listDoctors().then(setDoctors).catch(() => setDoctors([]));
   }, [open]);
+  useEffect(() => {
+    if (openNotes) setNotesDraft(patient?.notes || '');
+  }, [openNotes, patient]);
 
   const cols: GridColDef[] = useMemo(() => [
     { field: 'createdAt', headerName: 'Fecha', minWidth: 140, valueGetter: p => (p.row.createdAt || '').slice(0, 10) },
@@ -100,7 +119,9 @@ export default function PatientAnalysesPage() {
                 setEditingOrder(p.row);
                 setOrderNumber(p.row.orderNumber || '');
                 setTitle(p.row.title || '');
-                setDoctorName(p.row.doctor?.fullName || '');
+                setDoctorId(p.row.doctorId || '');
+                setmethodPay(p.row.methodPay || '');
+
                 setNotes(p.row.notes || '');
                 const existingCodes = (p.row.items || [])
                   .map((item: any) => String(item.examType?.code || ''))
@@ -131,7 +152,7 @@ export default function PatientAnalysesPage() {
 
   const payMethod = [
     { id: '1', fullName: 'Obra Social' },
-    { id: '2', fullName: 'Obra Social + adiciona' },
+    { id: '2', fullName: 'Obra Social + adicional' },
     { id: '3', fullName: 'Particular' },
   ];
 
@@ -189,6 +210,21 @@ export default function PatientAnalysesPage() {
     }
   };
 
+  const handleRemoveCode = (codigo: string) => {
+  // sacá el código de la UI
+  setCodes(prev => prev.filter(x => x !== codigo));
+
+  const itemId = existingByCode[codigo];
+  if (itemId) {
+    setToDelete(prev => (prev.includes(itemId) ? prev : [...prev, itemId]));
+    
+    setExistingByCode(prev => {
+      const { [codigo]: _removed, ...rest } = prev;
+      return rest;
+    });
+  }
+};
+
   const isFullCode = (v: string) => /^\d{6}$/.test(v);
   const addCode = (raw: string) => {
     const v = (raw || '').trim();
@@ -224,9 +260,10 @@ export default function PatientAnalysesPage() {
         await updateOrder(editingOrder.id, {
           orderNumber: orderNumber || null,
           title: title || null,
-          doctorName: doctorName || null, 
+          doctorId: doctorId || undefined,
           notes: notes || null,
         });
+
         if (toDelete.length > 0) {
           for (const itemId of toDelete) await deleteOrderItem(itemId);
         }
@@ -241,7 +278,7 @@ export default function PatientAnalysesPage() {
           patientId,
           orderNumber: orderNumber || undefined,
           title: title || undefined,
-          doctorName: doctorName || undefined, // 👈 del select
+          doctorId: doctorId || undefined,
           examCodes: codes,
           notes: notes || undefined,
         });
@@ -251,7 +288,7 @@ export default function PatientAnalysesPage() {
       setEditingOrder(null);
       setOrderNumber('');
       setTitle('');
-      setDoctorName('');
+      setDoctorId('');
       setNotes('');
       setCodes([]);
       setExistingByCode({});
@@ -259,6 +296,21 @@ export default function PatientAnalysesPage() {
       fetchData();
     } catch (e: any) {
       setError(e.message || 'No se pudo guardar');
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    try {
+      setSavingNotes(true);
+      if (!patient) { setOpenNotes(false); return; }
+      const newNotes = notesDraft.trim() || null;
+      await updatePatient(patient.id, { notes: newNotes });
+      setPatient(prev => prev ? { ...prev, notes: newNotes } : prev);
+      setOpenNotes(false);
+    } catch (e: any) {
+      setError(e.message || 'No se pudo guardar las notas');
+    } finally {
+      setSavingNotes(false);
     }
   };
 
@@ -276,17 +328,45 @@ export default function PatientAnalysesPage() {
       </Snackbar>
 
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: 'wrap', rowGap: 1 }}>
           <Link component={RouterLink} to="/patients" underline="none">
             <Button startIcon={<ArrowBackIcon />}>Volver</Button>
           </Link>
+
           <Typography variant="h5" fontWeight={700}>
-            {patient ? `Análisis de ${patient.lastName}, ${patient.firstName}${patient.dni ? ` — DNI ${patient.dni}` : ''}` : 'Análisis del Paciente'}
+            {patient
+              ? `Análisis de ${patient.lastName}, ${patient.firstName}${patient.dni ? ` — DNI ${patient.dni}` : ''}`
+              : 'Análisis del Paciente'}
           </Typography>
+
+          {patient && (
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: 1, flexWrap: 'wrap', rowGap: 1 }}>
+              <FlagChip
+                label="Diabetes"
+                value={patient?.diabetico}
+                icon={<BloodtypeIcon fontSize="small" />}
+              />
+              <FlagChip
+                label="Tiroides"
+                value={patient?.tiroides}
+                icon={<BiotechIcon fontSize="small" />}
+              />
+            </Stack>
+          )}
         </Stack>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpen(true)}>
-          Nuevo análisis
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            startIcon={<EditNoteIcon />}
+            onClick={() => { setNotesDraft(patient?.notes || ''); setOpenNotes(true); }}
+          >
+            Notas
+          </Button>
+
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { resetForm(); setOpen(true); }}>
+            NUEVO ANÁLISIS
+          </Button>
+        </Stack>
       </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -303,7 +383,7 @@ export default function PatientAnalysesPage() {
         />
       </Box>
 
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} fullWidth maxWidth="sm">
         <DialogTitle>{editingOrder ? 'Editar análisis' : 'Nuevo análisis'}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
@@ -314,31 +394,31 @@ export default function PatientAnalysesPage() {
             <TextField
               label="Médico"
               select
-              value={doctorName ?? ''}    
-              onChange={(e) => setDoctorName(e.target.value)}
+              value={doctorId}
+              onChange={(e) => setDoctorId(e.target.value)}
               fullWidth
             >
               <MenuItem value="">— Sin médico —</MenuItem>
               {doctors.map((d) => (
-                <MenuItem key={d.id} value={(d.fullName ?? '')}> 
+                <MenuItem key={d.id} value={(d.id ?? '')}>
                   {d.fullName}
                 </MenuItem>
-              ))}        
+              ))}
             </TextField>
 
             <TextField
-              label="Médico"
+              label="Forma de pago"
               select
-              value={doctorName ?? ''}    
-              onChange={(e) => setDoctorName(e.target.value)}
+              value={methodPay ?? ''}
+              onChange={(e) => setmethodPay(e.target.value)}
               fullWidth
             >
               <MenuItem value="">—</MenuItem>
               {payMethod.map((d) => (
-                <MenuItem key={d.id} value={(d.fullName ?? '')}> 
+                <MenuItem key={d.id} value={(d.fullName ?? '')}>
                   {d.fullName}
                 </MenuItem>
-              ))}        
+              ))}
             </TextField>
 
 
@@ -376,7 +456,7 @@ export default function PatientAnalysesPage() {
 
             <NomenMiniTable
               rows={selectedRows}
-              onRemove={(codigo) => setCodes(prev => prev.filter(x => x !== codigo))}
+              onRemove={handleRemoveCode}
               showTotals
             />
 
@@ -386,9 +466,31 @@ export default function PatientAnalysesPage() {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setOpen(false); setEditingOrder(null); }}>Cancelar</Button>
+          <Button onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
           <Button onClick={handleSave} variant="contained">
             {editingOrder ? 'Guardar' : 'Crear'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* modal de pacientes */}
+      <Dialog open={openNotes} onClose={() => setOpenNotes(false)} fullWidth maxWidth="sm">
+        <DialogTitle>Notas del paciente</DialogTitle>
+        <DialogContent dividers>
+          <TextField
+            autoFocus
+            label="Notas"
+            value={notesDraft}
+            onChange={(e) => setNotesDraft(e.target.value)}
+            fullWidth
+            multiline
+            minRows={4}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenNotes(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveNotes} disabled={savingNotes}>
+            {savingNotes ? 'Guardando…' : 'Guardar'}
           </Button>
         </DialogActions>
       </Dialog>

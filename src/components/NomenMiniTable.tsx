@@ -8,7 +8,7 @@ export type NomenRow = { codigo: string; determinacion: string; ub: number };
 
 type Props = {
   rows: NomenRow[];
-  onRemove?: (codigo: string) => void;  // si lo pasás, muestra la columna Acciones
+  onRemove?: (codigo: string) => void; 
   maxHeight?: number | string;
   dense?: boolean;
   showTotals?: boolean;

@@ -52,20 +52,6 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
     }
   }
 
-  function validate(values: any) {
-    const parsed = patientSchema.safeParse(values);
-    if (parsed.success) {
-      setErrs({});
-      return true;
-    }
-    const fieldErrors: Record<string, string> = {};
-    const flat = parsed.error.flatten().fieldErrors;
-    for (const [k, msgs] of Object.entries(flat)) {
-      if (msgs && msgs.length) fieldErrors[k] = msgs[0]!;
-    }
-    setErrs(fieldErrors);
-    return false;
-  }
 
   const onBlurField = (field: string, value: any) => {
     const one = patientSchema.pick({ [field]: true } as any).safeParse({ [field]: value });
@@ -92,6 +78,12 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
         lastName: '',
         obraSocial: '',
         codigoAfiliado: '',
+        address: '',
+        email: '',
+        phone: '',
+        notes: '',
+        sex: '',
+        birthDate: dayjs().subtract(30, 'year').format('YYYY-MM-DD'),
       }));
     }
   }, [initial]);

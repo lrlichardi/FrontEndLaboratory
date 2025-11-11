@@ -217,7 +217,7 @@ export default function ReportPage() {
                   const renderRows = (rows: typeof item.analytes) => (
                     <Box component="tbody">
                       {rows.map((analyte) => {
-                        const value = analyte.valueNum ?? analyte.valueText  ?? '—';
+                        const value = analyte.valueNum ?? analyte.valueText ?? '—';
                         const unit = analyte.unit || analyte.itemDef.unit || '-';
                         const refRaw = shouldApplySexAgeFilter({
                           itemKey: analyte.itemDef.key,
@@ -236,7 +236,7 @@ export default function ReportPage() {
                             <Box component="td" sx={{ p: '12px', textAlign: 'center', color: '#666' }}>{unit}</Box>
                             <Box component="td" sx={{ p: '12px', color: '#666', fontSize: '13px' }}>{refText || '—'}</Box>
                           </Box>
-                            );
+                        );
                       })}
                     </Box>
                   );
@@ -272,10 +272,10 @@ export default function ReportPage() {
                       <Section title={urinePrefixTitle.EQ} rows={groups.EQ} />
                       <Section title={urinePrefixTitle.EM} rows={groups.EM} />
                       {isUrineExamCode(item.examType.code) && (
-                    <Box sx={{ fontSize: '15px', color: '#030000ff', fontStyle: 'italic', mb: 1.5, pl: 1 }}>
-                      Muestra remitida
-                    </Box>
-                  )}
+                        <Box sx={{ fontSize: '15px', color: '#030000ff', fontStyle: 'italic', mb: 1.5, pl: 1 }}>
+                          Muestra remitida
+                        </Box>
+                      )}
                     </Box>
                   );
                 })()
@@ -305,7 +305,16 @@ export default function ReportPage() {
 
                       return (
                         <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
-                          <Box component="td" sx={{ p: '12px' }}>{analyte.itemDef.label}</Box>
+                          <Box component="td" sx={{ p: '12px' }}>
+                            <Box>{analyte.itemDef.label}</Box>
+                            {analyte?.itemDef?.method &&
+                              analyte.itemDef.method !== '-' &&
+                              analyte.itemDef.method !== 'N/A' && (
+                                <Box sx={{ mt: 0.25, fontSize: '12px', color: '#666' }}>
+                                  Met. {analyte.itemDef.method}
+                                </Box>
+                              )}
+                          </Box>
                           <Box component="td" sx={{ p: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}>{value}</Box>
                           <Box component="td" sx={{ p: '12px', textAlign: 'center', color: '#666' }}>{unit}</Box>
                           <Box component="td" sx={{ p: '12px', color: '#666', fontSize: '13px' }}>{refText || '—'}</Box>

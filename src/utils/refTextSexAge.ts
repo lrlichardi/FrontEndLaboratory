@@ -44,7 +44,6 @@ type AgeRange = { min: number; max: number; line: string; valueText: string };
 // Convierte "1 - 5 años", "6 - 11 años", "18 - 30 años", "45 - 66 años", "Adultas", "Adultos" a meses.
 function parseAgeLabelToRangeMonths(t: string): { min: number; max: number } | null {
   const s = t.toLowerCase().replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
-  console.log(s)
 
   // Adultos/Adultas -> desde 18 años a infinito
   if (/\badult/.test(s)) return { min: 18 * 12, max: Number.POSITIVE_INFINITY };
@@ -56,7 +55,7 @@ function parseAgeLabelToRangeMonths(t: string): { min: number; max: number } | n
   const a = parseInt(m[1], 10);
   const b = parseInt(m[2], 10);
   const unit = m[3].toLowerCase();
-  console.log({ a, b, unit });
+ 
   const toMonths = (n: number) =>
     unit.startsWith('mes') ? n :
     unit.startsWith('d')    ? Math.round(n / 30) :
@@ -118,7 +117,7 @@ export function refTextBySexAndAge(
 
   // Intentar matchear por edad
   const list = parseRanges(block);
-  console.log({ list });
+
   if (list.length === 0) {
     // no hay rangos legibles -> devolvemos el bloque entero
     return block.trim();
@@ -126,7 +125,6 @@ export function refTextBySexAndAge(
 
   const ageM = ageYearsToMonths(ageYears);
   const found = list.find(r => ageM >= r.min && ageM <= r.max);
-   console.log({ ageYears, ageM, found });
   return (found?.valueText || block || t).trim();
 }
 
