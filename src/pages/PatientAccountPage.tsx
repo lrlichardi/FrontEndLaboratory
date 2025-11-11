@@ -29,7 +29,7 @@ export default function PatientAccountPage() {
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
         <Typography variant="h5" fontWeight={700}>Cuenta del paciente</Typography>
         <Box flex={1} />
-        <Button component={RouterLink} to={`/patients/${patientId}`}>Volver a la ficha</Button>
+        <Button component={RouterLink} to={`/patients/`}>Volver a la ficha</Button>
       </Stack>
 
       {/* items es opcional; si luego querés, podés cargar OrderItem[] y pasarlos también */}

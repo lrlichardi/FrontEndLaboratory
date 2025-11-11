@@ -189,8 +189,7 @@ export default function ReportPage() {
           const isHemo = isHemograma(item.examType.name);
 
           return (
-            <Box key={item.id} sx={{ mb: 3, pageBreakInside: 'avoid' }}>
-              {/* Nombre del estudio si tiene + de 1 ítem */}
+            <Box key={item.id} sx={{ mb: 3 }}>
               {!hasSingleAnalyte && (
                 <>
                   <Box sx={{

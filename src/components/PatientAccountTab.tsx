@@ -63,9 +63,25 @@ export default function PatientAccountTab({ patientId, orders = [], items = [] }
         },
     ], [patientId])
 
-
     const onSave = async () => {
-    }
+        try {
+            if (!form.amount.trim()) throw new Error('Ingresá un monto');
+
+            await createAccountEntry(patientId, {
+                kind: form.kind,
+                amount: form.amount,                
+                description: form.description || undefined,
+                testOrderId: form.testOrderId || undefined,
+                orderItemId: form.orderItemId || undefined,
+            });
+
+            setOpen(false);
+            setForm({ kind: 'CHARGE', amount: '', description: '', testOrderId: '', orderItemId: '' });
+            load();
+        } catch (e: any) {
+            setErr(e.message || 'Error al guardar');
+        }
+    };
 
 
     return (

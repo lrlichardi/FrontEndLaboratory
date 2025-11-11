@@ -9,11 +9,10 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
-import DownloadIcon from '@mui/icons-material/Download';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { getOrder, updateAnalytesBulk, generateOrderReport, deleteOrderItem, type TestOrder, type OrderItemAnalyte } from '../api';
 import { capitalize } from '../utils/utils';
-// agrupar orina
+import PrintIcon from '@mui/icons-material/Print';
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
 
 type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string };
@@ -27,7 +26,6 @@ export default function OrderDetailPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, DraftVal>>({});
   const dirty = Object.keys(drafts).length > 0;
-  const [downloading, setDownloading] = useState(false);
   console.log(order)
   const toggle = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
@@ -45,25 +43,7 @@ export default function OrderDetailPage() {
     }
   };
 
-  const handleDownloadReport = async () => {
-    if (!order) return;
-    try {
-      setDownloading(true);
-      const blob = await generateOrderReport(order.id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `informe-${order.orderNumber || order.id}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setError(e.message || 'No se pudo generar el informe');
-    } finally {
-      setDownloading(false);
-    }
-  };
+  const handlePrint = () => window.print();
 
   useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
@@ -170,9 +150,7 @@ export default function OrderDetailPage() {
     );
   }
 
-
   // CALCULO DE LOS ABS
-
   const ABS_PAIRS = [
     { pct: 'Eosinófilos', abs: 'Eosinófilos (Abs)' },
     { pct: 'Basófilos', abs: 'Basófilos (Abs)' },
@@ -221,16 +199,28 @@ export default function OrderDetailPage() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
+      <style>{`
+      @page { size: A4 portrait; margin: 8mm; }
+      @media print {
+        body { font-size: 5px; }
+        .no-print { display: none !important; }
+        .print-only { display: block !important; }
+        .print-table { border-collapse: collapse; width: 100%; }
+        .print-table th, .print-table td { border: 1px solid #000; padding: 2px 6px; }
+        .print-muted { color: #000; }
+        .print-line { border-bottom: 1px solid #000; height: 14px; }
+      }
+    `}</style>
+      <Stack className="no-print" direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
         <Link component={RouterLink} to={`/patients/${order.patientId}/analyses`} underline="none">
           <Button startIcon={<ArrowBackIcon />}>Volver</Button>
         </Link>
         <Typography variant="h4" fontWeight={700}>Detalle del Análisis</Typography>
         <Box sx={{ flex: 1 }} />
         <Stack direction="row" spacing={1}>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadReport} disabled={downloading}>
-            {downloading ? 'Generando...' : 'Descargar PDF'}
-          </Button>
+           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+          Imprimir
+        </Button>
           <Button
             variant="outlined"
             startIcon={<VisibilityIcon />}
@@ -284,7 +274,7 @@ export default function OrderDetailPage() {
         Estudios ({order.items.length})
       </Typography>
 
-      <TableContainer component={Paper}>
+      <TableContainer className="print-only"component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -584,5 +574,7 @@ export default function OrderDetailPage() {
         </Table>
       </TableContainer>
     </Box>
+
+
   );
 }
