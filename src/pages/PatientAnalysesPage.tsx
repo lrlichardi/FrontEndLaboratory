@@ -17,7 +17,7 @@ import StatusCell from '../components/StatusCell';
 import {
   getPatient, listOrders, createOrder, updateOrderStatus, deleteOrder,
   getNomencladorAll, Patient, updateOrder, addOrderItemsByCodes, deleteOrderItem,
-  listDoctors, TestOrder, Nomen, Doctor, updatePatient
+  listDoctors, TestOrder, Nomen, Doctor, updatePatient, createAccountEntry
 } from '../api';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import type { OrderStatus } from '../utils/status';
@@ -54,6 +54,23 @@ export default function PatientAnalysesPage() {
   const [openNotes, setOpenNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState<string>('');
   const [savingNotes, setSavingNotes] = useState(false);
+  // manejo de fondos
+  const [chargeTotal, setChargeTotal] = useState('');
+  const [paidNow, setPaidNow] = useState('');
+  // 👇 lista de médicos desde el back
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+
+
+  const [errs, setErrs] = useState<Record<string, string>>({});
+  const [codeErrs, setCodeErrs] = useState<string[]>([]);
+
+  const clearErr = (k: string) =>
+    setErrs(prev => {
+      if (!prev[k]) return prev;
+      const { [k]: _omit, ...rest } = prev;
+      return rest;
+    });
+
   const resetForm = () => {
     setEditingOrder(null);
     setOrderNumber('');
@@ -66,17 +83,35 @@ export default function PatientAnalysesPage() {
     setToDelete([]);
     setNomenInput('');
     setOpts([]);
+    setErrs({});
+    setCodeErrs([]);
+    setError(null);
   };
-  // 👇 lista de médicos desde el back
-  const [doctors, setDoctors] = useState<Doctor[]>([]);
+
   useEffect(() => {
     if (!open) return;
     // cargo doctores al abrir el diálogo
     listDoctors().then(setDoctors).catch(() => setDoctors([]));
   }, [open]);
+
   useEffect(() => {
     if (openNotes) setNotesDraft(patient?.notes || '');
   }, [openNotes, patient]);
+
+  useEffect(() => {
+    if (methodPay !== 'Particular' && methodPay !== 'Obra Social + adicional') {
+      setChargeTotal('');
+      setPaidNow('');
+    }
+  }, [methodPay]);
+
+  useEffect(() => { fetchData(); }, [patientId]);
+  useEffect(() => { if (patientId) getPatient(patientId).then(setPatient).catch(() => setPatient(null)); }, [patientId]);
+  useEffect(() => {
+    if (open && allNomen === null) getNomencladorAll().then(setAllNomen).catch(() => setAllNomen([]));
+  }, [open, allNomen]);
+
+  // columnas de la tabla
 
   const cols: GridColDef[] = useMemo(() => [
     { field: 'createdAt', headerName: 'Fecha', minWidth: 140, valueGetter: p => (p.row.createdAt || '').slice(0, 10) },
@@ -156,6 +191,48 @@ export default function PatientAnalysesPage() {
     { id: '3', fullName: 'Particular' },
   ];
 
+  const toMoney = (s: string) => {
+    const n = parseFloat(String(s ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  function validateForm() {
+    const e: Record<string, string> = {};
+    const ce: string[] = [];
+
+    // Códigos
+    if (codes.length === 0) e.codes = 'Agregá al menos un código';
+    if (codes.some(c => !/^\d{6}$/.test(c))) e.codes = 'Todos los códigos deben tener 6 dígitos';
+
+    // Existen en Nomenclador (si ya tenés cargado allNomen)
+    const unknown = codes.filter(c => !nomenIndex.get(String(c)));
+    if (unknown.length) ce.push(`Códigos no encontrados en Nomenclador: ${unknown.join(', ')}`);
+
+    // orderNumber único en la lista actual (evita muchos P2002 locales)
+    if (orderNumber && orders.some(o => o.id !== editingOrder?.id && (o.orderNumber || '') === orderNumber)) {
+      e.orderNumber = 'Ya existe una orden con ese número';
+    }
+
+    // Reglas de pago
+    const exigeMontos = methodPay === 'Particular' || methodPay === 'Obra Social + adicional';
+    if (exigeMontos) {
+      const t = toMoney(chargeTotal);
+      const p = toMoney(paidNow);
+      if (!Number.isFinite(t) || t <= 0) e.chargeTotal = 'Ingresá un monto > 0';
+      if (!Number.isFinite(p) || p < 0) e.paidNow = 'Pago inválido';
+      if (Number.isFinite(t) && Number.isFinite(p) && p > t) e.paidNow = 'No puede superar el cargo';
+    }
+
+    // Médico requerido si es OS (opcional, quitá si no aplica)
+    if (methodPay?.startsWith('Obra Social') && !doctorId) {
+      e.doctorId = 'Seleccioná un médico para obra social';
+    }
+
+    setErrs(e);
+    setCodeErrs(ce);
+    return { ok: Object.keys(e).length === 0 && ce.length === 0 };
+  }
+
   const fetchData = async () => {
     if (!patientId) return;
     try {
@@ -169,12 +246,6 @@ export default function PatientAnalysesPage() {
       setLoading(false);
     }
   };
-
-  useEffect(() => { fetchData(); }, [patientId]);
-  useEffect(() => { if (patientId) getPatient(patientId).then(setPatient).catch(() => setPatient(null)); }, [patientId]);
-  useEffect(() => {
-    if (open && allNomen === null) getNomencladorAll().then(setAllNomen).catch(() => setAllNomen([]));
-  }, [open, allNomen]);
 
   const filterLocal = (q: string) => {
     if (!allNomen) return [];
@@ -211,19 +282,24 @@ export default function PatientAnalysesPage() {
   };
 
   const handleRemoveCode = (codigo: string) => {
-  // sacá el código de la UI
-  setCodes(prev => prev.filter(x => x !== codigo));
-
-  const itemId = existingByCode[codigo];
-  if (itemId) {
-    setToDelete(prev => (prev.includes(itemId) ? prev : [...prev, itemId]));
-    
-    setExistingByCode(prev => {
-      const { [codigo]: _removed, ...rest } = prev;
-      return rest;
+    // sacá el código de la UI
+    setCodes(prev => {
+      const next = prev.filter(x => x !== codigo);
+      if (next.length > 0) { clearErr('codes'); setCodeErrs([]); }
+      else { setErrs(p => ({ ...p, codes: 'Agregá al menos un código' })); }
+      return next;
     });
-  }
-};
+
+    const itemId = existingByCode[codigo];
+    if (itemId) {
+      setToDelete(prev => (prev.includes(itemId) ? prev : [...prev, itemId]));
+
+      setExistingByCode(prev => {
+        const { [codigo]: _removed, ...rest } = prev;
+        return rest;
+      });
+    }
+  };
 
   const isFullCode = (v: string) => /^\d{6}$/.test(v);
   const addCode = (raw: string) => {
@@ -232,6 +308,9 @@ export default function PatientAnalysesPage() {
     setCodes(prev => (prev.includes(v) ? prev : [...prev, v]));
     setNomenInput('');
     setOpts([]);
+    setError(null);
+    clearErr('codes');
+    setCodeErrs([]);
   };
 
   const nomenIndex = useMemo(() => {
@@ -249,6 +328,13 @@ export default function PatientAnalysesPage() {
 
   const handleSave = async () => {
     if (!patientId) return;
+
+    const { ok } = validateForm();
+    if (!ok) {
+      setError('Revisá los campos marcados.');
+      return;
+    }
+
     if (codes.some(c => !/^\d{6}$/.test(c))) {
       setError('Todos los códigos deben tener 6 dígitos');
       return;
@@ -257,13 +343,13 @@ export default function PatientAnalysesPage() {
     try {
       if (editingOrder) {
         // actualizar metadata (mantenemos doctorName como string)
-        await updateOrder(editingOrder.id, {
+        const resp = await updateOrder(editingOrder.id, {
           orderNumber: orderNumber || null,
           title: title || null,
           doctorId: doctorId || undefined,
+          methodPay: methodPay || null,
           notes: notes || null,
         });
-
         if (toDelete.length > 0) {
           for (const itemId of toDelete) await deleteOrderItem(itemId);
         }
@@ -279,9 +365,39 @@ export default function PatientAnalysesPage() {
           orderNumber: orderNumber || undefined,
           title: title || undefined,
           doctorId: doctorId || undefined,
+          methodPay: methodPay || null,
           examCodes: codes,
           notes: notes || undefined,
         });
+
+        try {
+          if (methodPay === 'Particular' || methodPay === 'Obra Social + adicional') {
+            const orderId = resp?.id // adaptalo a lo que devuelva tu API
+            if (orderId) {
+              const t = parseFloat((chargeTotal || '0').replace(',', '.')) || 0;
+              const p = parseFloat((paidNow || '0').replace(',', '.')) || 0;
+
+              if (t > 0) {
+                await createAccountEntry(patientId, {
+                  kind: 'CHARGE',
+                  amount: t,
+                  description: `Cargo orden #${orderNumber || ''}`,
+                  testOrderId: orderId,
+                });
+              }
+              if (p > 0) {
+                await createAccountEntry(patientId, {
+                  kind: 'PAYMENT',
+                  amount: p,
+                  description: `Pago orden #${orderNumber || ''}`,
+                  testOrderId: orderId,
+                });
+              }
+            }
+          }
+        } catch (_) {
+          // si falla el registro contable no rompemos la creación de la orden
+        }
         setNotice({ open: true, message: resp?.message || '¡Análisis creado correctamente!' });
       }
       setOpen(false);
@@ -318,6 +434,22 @@ export default function PatientAnalysesPage() {
     if (reason === 'clickaway') return;
     setNotice({ open: false, message: '' });
   };
+
+  const saldo = useMemo(() => {
+    const t = parseFloat((chargeTotal || '0').replace(',', '.')) || 0;
+    const p = parseFloat((paidNow || '0').replace(',', '.')) || 0;
+    return Math.max(t - p, 0);
+  }, [chargeTotal, paidNow]);
+
+  const canCreate = useMemo(() => {
+    const okCodes = codes.length > 0 && codes.every(c => /^\d{6}$/.test(c));
+    const exigeMontos = methodPay === 'Particular' || methodPay === 'Obra Social + adicional';
+    const t = parseFloat((chargeTotal || '0').replace(',', '.'));
+    const p = parseFloat((paidNow || '0').replace(',', '.'));
+    const okMoney = !exigeMontos || (Number.isFinite(t) && t > 0 && Number.isFinite(p) && p >= 0 && p <= t);
+    const okDoctor = !methodPay?.startsWith('Obra Social') || !!doctorId;
+    return okCodes && okMoney && okDoctor && !loading;
+  }, [codes, methodPay, chargeTotal, paidNow, doctorId, loading]);
 
   return (
     <Box>
@@ -369,8 +501,6 @@ export default function PatientAnalysesPage() {
         </Stack>
       </Stack>
 
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
       <Box sx={{ height: 560, width: '100%' }}>
         <DataGrid
           rows={orders}
@@ -385,9 +515,11 @@ export default function PatientAnalysesPage() {
 
       <Dialog open={open} onClose={() => { setOpen(false); resetForm(); }} fullWidth maxWidth="sm">
         <DialogTitle>{editingOrder ? 'Editar análisis' : 'Nuevo análisis'}</DialogTitle>
+        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
         <DialogContent dividers>
           <Stack spacing={2}>
-            <TextField label="N° de orden" value={orderNumber} onChange={(e) => setOrderNumber(e.target.value)} fullWidth />
+            <TextField label="N° de orden" value={orderNumber} onChange={(e) => { setOrderNumber(e.target.value); clearErr('orderNumber'); setError(null); }} error={!!errs.orderNumber}
+              helperText={errs.orderNumber || ''} fullWidth />
             <TextField label="Titulo" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
 
             {/* 👇 Select de médicos (MenuItem) */}
@@ -395,7 +527,9 @@ export default function PatientAnalysesPage() {
               label="Médico"
               select
               value={doctorId}
-              onChange={(e) => setDoctorId(e.target.value)}
+              onChange={(e) => { setDoctorId(e.target.value); clearErr('doctorId'); setError(null); }}
+              error={!!errs.doctorId}
+              helperText={errs.doctorId || ''}
               fullWidth
             >
               <MenuItem value="">— Sin médico —</MenuItem>
@@ -410,7 +544,7 @@ export default function PatientAnalysesPage() {
               label="Forma de pago"
               select
               value={methodPay ?? ''}
-              onChange={(e) => setmethodPay(e.target.value)}
+              onChange={(e) => { setmethodPay(e.target.value); clearErr('chargeTotal'); clearErr('paidNow'); setError(null); }}
               fullWidth
             >
               <MenuItem value="">—</MenuItem>
@@ -420,9 +554,37 @@ export default function PatientAnalysesPage() {
                 </MenuItem>
               ))}
             </TextField>
+            {(methodPay === 'Particular' || methodPay === 'Obra Social + adicional') && (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  label="Cargo total ($)"
+                  inputMode="decimal"
+                  value={chargeTotal}
+                  onChange={(e) => { setChargeTotal(e.target.value); clearErr('chargeTotal'); setError(null); }}
+                  error={!!errs.chargeTotal}
+                  helperText={errs.chargeTotal || ''}
+                  fullWidth
+                />
+                <TextField
+                  label="Pago ahora ($)"
+                  inputMode="decimal"
+                  value={paidNow}
+                  onChange={(e) => { setPaidNow(e.target.value); clearErr('paidNow'); setError(null); }}
+                  helperText={errs.paidNow ? errs.paidNow : `Saldo: $ ${saldo.toFixed(2)}`}
+                  error={!!errs.paidNow}
 
+                />
+              </Stack>
+            )}
 
             <TextField label="Observaciones" value={notes} onChange={(e) => setNotes(e.target.value)} fullWidth />
+
+
+            {(errs.codes || codeErrs.length > 0) && (
+              <Alert severity="warning">
+                {errs.codes || codeErrs.join(' | ')}
+              </Alert>
+            )}
 
             <Autocomplete
               freeSolo
@@ -467,7 +629,7 @@ export default function PatientAnalysesPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setOpen(false); resetForm(); }}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
+          <Button onClick={handleSave} variant="contained" disabled={!canCreate}>
             {editingOrder ? 'Guardar' : 'Crear'}
           </Button>
         </DialogActions>

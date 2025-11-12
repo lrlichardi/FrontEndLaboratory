@@ -7,13 +7,15 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import dayjs from 'dayjs'
 import { listAccountEntries, getAccountSummary, createAccountEntry, deleteAccountEntry, type AccountEntry } from '../api'
 
+type Kind = 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT';
 
-const KINDS = [
+const KIND_OPTIONS: ReadonlyArray<{ value: Kind; label: string }> = [
     { value: 'CHARGE', label: 'Cargo' },
     { value: 'PAYMENT', label: 'Pago' },
     { value: 'ADJUSTMENT', label: 'Ajuste' },
-] as const
+];
 
+const KIND_LABELS: Record<Kind, string> = { CHARGE: 'Debe', PAYMENT: 'Pago', ADJUSTMENT: 'Ajuste', };
 
 type Props = { patientId: string; orders: { id: string; orderNumber?: string | null }[]; items?: { id: string; label?: string }[] }
 
@@ -48,7 +50,21 @@ export default function PatientAccountTab({ patientId, orders = [], items = [] }
 
     const cols: GridColDef[] = useMemo(() => [
         { field: 'createdAt', headerName: 'Fecha', width: 110, valueGetter: p => dayjs(p.value as string).format('DD/MM/YY') },
-        { field: 'kind', headerName: 'Tipo', width: 120, renderCell: p => <Chip size="small" label={p.value} color={p.value === 'PAYMENT' ? 'success' : p.value === 'CHARGE' ? 'warning' : 'default'} /> },
+        {
+            field: 'kind',
+            headerName: 'Tipo',
+            width: 140,
+            renderCell: (p) => {
+                const k = p.value as Kind;
+                return (
+                    <Chip
+                        size="small"
+                        label={KIND_LABELS[k] ?? String(p.value)}
+                        color={k === 'PAYMENT' ? 'success' : k === 'CHARGE' ? 'warning' : 'default'}
+                    />
+                );
+            }
+        },
         { field: 'amountCents', headerName: 'Monto', width: 120, valueFormatter: p => `$ ${(Number(p.value) / 100).toFixed(2)}` },
         { field: 'description', headerName: 'Descripción', flex: 1, minWidth: 200 },
         { field: 'testOrder', headerName: 'Orden', width: 160, valueGetter: p => p.value?.orderNumber ? `#${p.value.orderNumber}` : p.row.testOrder?.id || '' },
@@ -69,7 +85,7 @@ export default function PatientAccountTab({ patientId, orders = [], items = [] }
 
             await createAccountEntry(patientId, {
                 kind: form.kind,
-                amount: form.amount,                
+                amount: form.amount,
                 description: form.description || undefined,
                 testOrderId: form.testOrderId || undefined,
                 orderItemId: form.orderItemId || undefined,
@@ -114,8 +130,18 @@ export default function PatientAccountTab({ patientId, orders = [], items = [] }
                 <DialogContent>
                     <Grid container spacing={2} sx={{ mt: 0.5 }}>
                         <Grid item xs={12} sm={4}>
-                            <TextField select label="Tipo" fullWidth value={form.kind} onChange={e => setForm(f => ({ ...f, kind: e.target.value as any }))}>
-                                {KINDS.map(k => <MenuItem key={k.value} value={k.value}>{k.label}</MenuItem>)}
+                            <TextField
+                                select
+                                label="Tipo"
+                                fullWidth
+                                value={form.kind}
+                                onChange={e => setForm(f => ({ ...f, kind: e.target.value as Kind }))}
+                            >
+                                {KIND_OPTIONS.map(opt => (
+                                    <MenuItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </MenuItem>
+                                ))}
                             </TextField>
                         </Grid>
                         <Grid item xs={12} sm={4}>

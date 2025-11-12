@@ -94,6 +94,7 @@ export async function createOrder(payload: {
   title?: string | null;
   doctorId?: string;
   examCodes: string[];
+  methodPay: string | null,
   notes?: string | null;
 }): Promise<TestOrder> {
   const resp = await fetch(`${BASE_URL}/orders`, {
@@ -102,7 +103,8 @@ export async function createOrder(payload: {
     body: JSON.stringify(payload),
   });
   if (!resp.ok) throw new Error('No se pudo crear el análisis');
-  return resp.json();
+  return resp.json()
+  
 }
 
 export async function upsertOrderItemResult(orderItemId: string, payload: {
@@ -152,7 +154,7 @@ export async function deleteOrder(orderId: string) {
 }
 
 export async function updateOrder(id: string, body: {
-  orderNumber?: string | null, title?: string | null; doctorId?: string | null; notes?: string | null;
+  orderNumber?: string | null, title?: string | null; doctorId?: string | null; notes?: string | null;  methodPay: string | null;
 }) {
   const r = await fetch(`${BASE_URL}/orders/${id}`, { 
     method: 'PATCH',

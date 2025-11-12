@@ -26,7 +26,7 @@ export default function OrderDetailPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, DraftVal>>({});
   const dirty = Object.keys(drafts).length > 0;
-  console.log(order)
+
   const toggle = (id: string) => setExpanded(e => ({ ...e, [id]: !e[id] }));
 
   const fetchOrder = async () => {
@@ -218,9 +218,9 @@ export default function OrderDetailPage() {
         <Typography variant="h4" fontWeight={700}>Detalle del Análisis</Typography>
         <Box sx={{ flex: 1 }} />
         <Stack direction="row" spacing={1}>
-           <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
-          Imprimir
-        </Button>
+          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
+            Imprimir
+          </Button>
           <Button
             variant="outlined"
             startIcon={<VisibilityIcon />}
@@ -274,7 +274,7 @@ export default function OrderDetailPage() {
         Estudios ({order.items.length})
       </Typography>
 
-      <TableContainer className="print-only"component={Paper}>
+      <TableContainer className="print-only" component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
@@ -406,7 +406,7 @@ export default function OrderDetailPage() {
 
                                         // Para EQ usamos combo; si no coincide con opciones, mostramos vacío
                                         const eqSelectValue =
-                                          currentText === 'Contiene' || currentText === 'No contiene' ? currentText : 'No contiene';
+                                          currentText === 'Contiene' || currentText === 'No contiene' || currentText === 'Contiene +' || currentText === 'Contiene ++' || currentText === 'Contiene +++' || currentText === 'Contiene ++++' ? currentText : '';
 
                                         const isEdited = !!drafts[a.id];
 
@@ -469,7 +469,7 @@ export default function OrderDetailPage() {
                                               <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
                                             </TableCell>
                                             <TableCell width={160}>
-                                              <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                                              <Typography variant="body2">{capitalize(a.itemDef.refText) || '—'}</Typography>
                                             </TableCell>
                                             <TableCell width={120} align="center">
                                               <Chip

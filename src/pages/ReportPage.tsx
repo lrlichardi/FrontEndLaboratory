@@ -164,7 +164,7 @@ export default function ReportPage() {
               <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.doctor?.fullName || '—'}</Box>
             </Box>
             {order.patient.obraSocial && (
-              <Box>
+              <Box >
                 <Box component="strong" sx={{ color: '#666' }}>Obra Social:</Box>
                 <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.patient.obraSocial}</Box>
               </Box>
@@ -305,11 +305,11 @@ export default function ReportPage() {
                       return (
                         <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
                           <Box component="td" sx={{ p: '12px' }}>
-                            <Box>{analyte.itemDef.label}</Box>
+                            <Box>{capitalize(analyte.itemDef.label)}</Box>
                             {analyte?.itemDef?.method &&
                               analyte.itemDef.method !== '-' &&
                               analyte.itemDef.method !== 'N/A' && (
-                                <Box sx={{ mt: 0.25, fontSize: '12px', color: '#666' }}>
+                                <Box sx={{ mt: 0.25, fontSize: '10px', color: '#666' }}>
                                   Met. {analyte.itemDef.method}
                                 </Box>
                               )}
