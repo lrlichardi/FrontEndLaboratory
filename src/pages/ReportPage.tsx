@@ -10,6 +10,18 @@ import { shouldApplySexAgeFilter, refTextBySexAndAge } from '../utils/refTextSex
 // Agrupador de orina
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
 
+const fmtNum = (n: any) => {
+  const x = typeof n === 'number'
+    ? n
+    : Number(String(n ?? '').replace(/\./g, '').replace(',', '.'));
+
+  // Si el valor es mayor a 100,000, formatear con separador de miles
+  if (Number.isFinite(x) && x > 100000) {
+    return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(x);
+  }
+
+  return String(n ?? '');
+};
 
 function calculateAge(birthDate: Date | string): number {
   const today = new Date();
@@ -19,8 +31,6 @@ function calculateAge(birthDate: Date | string): number {
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) age--;
   return age;
 }
-
-
 
 export default function ReportPage() {
   const { orderId } = useParams();
@@ -78,8 +88,6 @@ export default function ReportPage() {
     return u ? `${t} ${u}` : t;
   };
 
-  const isHemograma = (name: string) => name.toUpperCase().includes('HEMOGRAMA');
-
   return (
     <>
       {/* Botones de acción - Solo visible en pantalla */}
@@ -109,7 +117,7 @@ export default function ReportPage() {
           minHeight: '100vh',
         }}>
         {/* Encabezado */}
-        <Box sx={{ textAlign: 'center', borderBottom: '3px solid #1976d2', paddingBottom: '20px', marginBottom: '30px' }}>
+        <Box sx={{ textAlign: 'center', borderBottom: '3px solid #1976d2', paddingBottom: '5px' }}>
           <Box component="h1" sx={{ fontSize: '28px', fontWeight: 'bold', color: '#1976d2', m: 0, mb: 1 }}>
             Laboratorio Clínico
           </Box>
@@ -124,55 +132,56 @@ export default function ReportPage() {
 
         {/* Título */}
         <Box component="h2" sx={{
-          fontSize: '20px', fontWeight: 'bold', color: '#333', mb: 2,
-          textTransform: 'uppercase', borderBottom: '2px solid #e0e0e0', pb: '10px'
+          fontSize: '20px', fontWeight: 'bold', color: '#333',
+          textTransform: 'uppercase', borderBottom: '2px solid #e0e0e0'
         }}>
           Informe de Análisis Clínicos
         </Box>
 
         {/* Datos del paciente */}
         <Box sx={{
-          backgroundColor: '#f8f9fa', p: 2.5, borderRadius: '8px', mb: 3, border: '1px solid #e0e0e0'
+          backgroundColor: '#f8f9fa', p: 1, borderRadius: '8px', border: '1px solid #e0e0e0'
         }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2px', fontSize: '16px' }}>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>Paciente:</Box>
-              <Box sx={{ fontSize: '16px', fontWeight: 'bold', mt: 0.5 }}>
+              <Box sx={{ fontSize: '16px', fontWeight: 'bold', }}>
                 {order.patient.lastName}, {order.patient.firstName}
               </Box>
             </Box>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>DNI:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.patient.dni}</Box>
+              <Box sx={{ fontSize: '16px', }}>{order.patient.dni}</Box>
             </Box>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>Edad:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>{age} años</Box>
+              <Box sx={{ fontSize: '16px', }}>{age} años</Box>
             </Box>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>Sexo:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.patient.sex}</Box>
+              <Box sx={{ fontSize: '16px', }}>{order.patient.sex}</Box>
             </Box>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>Fecha:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>
+              <Box sx={{ fontSize: '16px', }}>
                 {new Date(order.createdAt).toLocaleDateString('es-AR')}
               </Box>
             </Box>
             <Box>
               <Box component="strong" sx={{ color: '#666' }}>Médico:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.doctor?.fullName || '—'}</Box>
+              <Box sx={{ fontSize: '16px', }}>{order.doctor?.fullName || '—'}</Box>
             </Box>
             {order.patient.obraSocial && (
               <Box >
                 <Box component="strong" sx={{ color: '#666' }}>Obra Social:</Box>
-                <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.patient.obraSocial}</Box>
+                <Box sx={{ fontSize: '16px', }}>{order.patient.obraSocial}</Box>
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Box component="strong" sx={{ color: '#666' }}>N° de Orden:</Box>
+                  <Box sx={{ fontSize: '16px' }}>{order.orderNumber}</Box>
+                </Box>
               </Box>
             )}
-            <Box sx={{ gridColumn: '1 / -1' }}>
-              <Box component="strong" sx={{ color: '#666' }}>N° de Orden:</Box>
-              <Box sx={{ fontSize: '16px', mt: 0.5 }}>{order.orderNumber}</Box>
-            </Box>
+
           </Box>
         </Box>
 
@@ -184,148 +193,283 @@ export default function ReportPage() {
           Resultados
         </Box>
 
-        {order.items.map((item) => {
-          const hasSingleAnalyte = item.analytes.length === 1;
-          const isHemo = isHemograma(item.examType.name);
+        {(() => {
+          const urineItems = order.items.filter((i) => isUrineExamCode(i.examType.code));
+          const otherItems = order.items.filter((i) => !isUrineExamCode(i.examType.code));
+
+          // 🔹 separo otros en multi-analito y single-analito
+          const multiItems = otherItems.filter((i) => (i.analytes?.length || 0) > 1);
+          const singleItems = otherItems.filter((i) => (i.analytes?.length || 0) === 1);
 
           return (
-            <Box key={item.id} sx={{ mb: 3 }}>
-              {!hasSingleAnalyte && (
-                <>
+            <>
+              {urineItems.map((item) => (
+                <Box key={item.id} >
                   <Box sx={{
-                    backgroundColor: '#e3f2fd', p: '12px 16px', borderRadius: '4px', mb: 1.5, borderLeft: '4px solid #1976d2'
+                    backgroundColor: '#e3f2fd', p:'11px', borderRadius: '4px',
+                    mb: 0.5, borderLeft: '4px solid #1976d2'
                   }}>
-                    <Box sx={{ fontSize: '16px', fontWeight: 'bold', color: '#1976d2' }}>
+                    <Box sx={{ fontSize: '15px', fontWeight: 'bold', color: '#1976d2' }}>
                       {capitalize(item.examType.name)}
                     </Box>
                   </Box>
-                  {/* {isHemo && (
-                    <Box sx={{ fontSize: '13px', color: '#666', fontStyle: 'italic', mb: 1.5, pl: 2 }}>
-                      Contador Hematológico
+
+                  {(() => {
+                    const groups = groupUrineAnalytes(item.analytes);
+
+                    const renderRows = (rows: typeof item.analytes, kind: 'EF' | 'EQ' | 'EM') => (
+                      <Box component="tbody">
+                        {rows.map((analyte) => {
+                          const valueRaw = analyte.valueNum ?? analyte.valueText ?? '—';
+                          const unit = analyte.unit || analyte.itemDef.unit || '-';
+
+                          const refRaw = shouldApplySexAgeFilter({
+                            itemKey: analyte.itemDef.key,
+                            itemLabel: analyte.itemDef.label?.toUpperCase?.(),
+                            examName: item.examType.name?.toUpperCase?.(),
+                          })
+                            ? refTextBySexAndAge(analyte.itemDef.refText, sex, age)
+                            : (analyte.itemDef.refText || '—');
+
+                          let refText = refRaw && refRaw !== '—' ? withUnit(refRaw, unit) : refRaw;
+
+                          // EM: si el valor es "1 cada N ..." -> Mostrar "Cpos."
+                          if (kind === 'EM') {
+                            const s = String(valueRaw ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
+                            const isOnePerField = /^1\s*(cada|c\/)\s*\d+(\s*(c(po)?s?|campo?s?))?/.test(s);
+                            if (isOnePerField) refText = 'Cpos.';
+                          }
+
+                          return (
+                            <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
+                              <Box component="td" sx={{ p: '5px' }}>{capitalize(analyte.itemDef.label)}</Box>
+                              <Box component="td" sx={{ p: '5px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>
+                                {typeof valueRaw === 'number' ? fmtNum(valueRaw) : capitalize(valueRaw)}
+                              </Box>
+                              <Box component="td" sx={{ p: '5x', textAlign: 'center', color: '#666' }}>{unit}</Box>
+                              <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '12px' }}>{capitalize(refText) || '—'}</Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    );
+
+                    const Section = ({ title, rows, kind }: {
+                      title: string;
+                      rows: typeof item.analytes;
+                      kind: 'EF' | 'EQ' | 'EM';
+                    }) => {
+                      if (!rows.length) return null;
+                      return (
+                        <Box>
+                          <Box sx={{
+                            backgroundColor: '#f1f8ff', borderLeft: '4px solid #1976d2',
+                            px: 1.5, py: 0.75, fontWeight: 500, color: '#1976d2', fontSize: '14px',
+                          }}>
+                            {title}
+                          </Box>
+                          <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                            <Box component="thead">
+                              <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
+                                <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', fontSize: '13px',}}>Determinación</Box>
+                                <Box component="th" sx={{ p: '5px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>Resultado</Box>
+                                <Box component="th" sx={{ p: '5px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>Unidad</Box>
+                                <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>Valores de Referencia</Box>
+                              </Box>
+                            </Box>
+                            {renderRows(rows, kind)}
+                          </Box>
+                        </Box>
+                      );
+                    };
+
+                    return (
+                      <Box>
+                        <Section title={urinePrefixTitle.EF} rows={groups.EF} kind="EF" />
+                        <Section title={urinePrefixTitle.EQ} rows={groups.EQ} kind="EQ" />
+                        <Section title={urinePrefixTitle.EM} rows={groups.EM} kind="EM" />
+                        <Box sx={{ fontSize: '13px', color: '#030000ff', fontStyle: 'italic', mb: 0.5, pl: 1 }}>
+                          Muestra remitida
+                        </Box>
+                      </Box>
+                    );
+                  })()}
+                </Box>
+              ))}
+
+              {/* === MULTI-ITEMS: cada estudio en su propia tabla (incluye HEMOGRAMA) === */}
+              {multiItems.map((item) => {
+                   const normalAnalytes = item.analytes.filter(a => 
+                  a.itemDef.label?.toLowerCase() !== 'observaciones'
+                );
+                const observacionesAnalyte = item.analytes.find(a => 
+                  a.itemDef.label?.toLowerCase() === 'observaciones'
+                );
+
+                
+                return (
+                <Box key={item.id}>
+                  <Box sx={{
+                    backgroundColor: '#e3f2fd', p:'11px', borderRadius: '4px',
+                    mb: 0.5, borderLeft: '4px solid #1976d2'
+                  }}>
+                    <Box sx={{ fontSize: '15px', fontWeight: 'bold', color: '#1976d2' }}>
+                      {capitalize(item.examType.name)}
                     </Box>
-                  )} */}
-                </>
-              )}
+                  </Box>
 
-              {/* Tabla de resultados */}
-              {isUrineExamCode(item.examType.code) ? (
-                // === Orina completa agrupada EF/EQ/EM ===
-                (() => {
-                  const groups = groupUrineAnalytes(item.analytes);
+                  {normalAnalytes.length > 0 && (
+                      <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <Box component="thead">
+                          <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
+                            <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>
+                              Determinación
+                            </Box>
+                            <Box component="th" sx={{ p: '5px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>
+                              Resultado
+                            </Box>
+                            <Box component="th" sx={{ p: '5px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>
+                              Unidad
+                            </Box>
+                            <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>
+                              Valores de Referencia
+                            </Box>
+                          </Box>
+                        </Box>
 
-                  const renderRows = (rows: typeof item.analytes) => (
+                        <Box component="tbody">
+                          {normalAnalytes.map((analyte) => {
+                            const valueRaw = analyte.valueNum ?? analyte.valueText ?? '—';
+                            const unit = analyte.unit || analyte.itemDef.unit || '-';
+
+                            const refRaw = shouldApplySexAgeFilter({
+                              itemKey: analyte.itemDef.key,
+                              itemLabel: analyte.itemDef.label?.toUpperCase?.(),
+                              examName: item.examType.name?.toUpperCase?.(),
+                            })
+                              ? refTextBySexAndAge(analyte.itemDef.refText, sex, age)
+                              : (analyte.itemDef.refText || '—');
+
+                            const refText = refRaw && refRaw !== '—' ? withUnit(refRaw, unit) : refRaw;
+
+                        return (
+                              <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
+                                <Box component="td" sx={{ p: '5px' }}>
+                                  <Box>{capitalize(analyte.itemDef.label)}</Box>
+                                  {analyte?.itemDef?.method &&
+                                    analyte.itemDef.method !== '-' &&
+                                    analyte.itemDef.method !== 'N/A' && (
+                                      <Box sx={{ mt: 0.25, fontSize: '10px', color: '#666' }}>
+                                        Met. {analyte.itemDef.method}
+                                      </Box>
+                                    )}
+                                </Box>
+                                <Box component="td" sx={{ p: '5px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
+                                  {typeof valueRaw === 'number' ? fmtNum(valueRaw) : valueRaw}
+                                </Box>
+                                <Box component="td" sx={{ p: '5px', textAlign: 'center', color: '#666' }}>
+                                  {unit}
+                                </Box>
+                                <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '13px' }}>
+                                  {capitalize(refText) || '—'}
+                                </Box>
+                              </Box>
+                            );
+                          })}
+                        </Box>
+                      </Box>
+                    )}
+
+                    {/* Mostrar Observaciones fuera de la tabla */}
+                    {observacionesAnalyte && (observacionesAnalyte.valueText || observacionesAnalyte.valueNum) && (
+                      <Box sx={{ 
+                        mt: 1, 
+                        p: 1, 
+                        backgroundColor: '#f8f9fa', 
+                        borderLeft: '3px solid #1976d2',
+                        borderRadius: '4px'
+                      }}>
+                        <Box sx={{ fontWeight: 'bold', color: '#333', fontSize: '13px' }}>
+                          Observaciones:
+                        </Box>
+                        <Box sx={{ color: '#666', fontSize: '14px', lineHeight: 1.6 }}>
+                          {capitalize(observacionesAnalyte.valueText) || observacionesAnalyte.valueNum || '—'}
+                        </Box>
+                      </Box>
+                    )}
+                  </Box>
+                );
+              })}
+
+              {/* === SINGLE-ITEMS: una sola tabla acumulada, SIN columna "Estudio" === */}
+              {singleItems.length > 0 && (
+                <Box >
+                  <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <Box component="thead">
+                      <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
+                        <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>
+                          Determinación
+                        </Box>
+                        <Box component="th" sx={{ p: '5px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>
+                          Resultado
+                        </Box>
+                        <Box component="th" sx={{ p: '5px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>
+                          Unidad
+                        </Box>
+                        <Box component="th" sx={{ p: '5px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>
+                          Valores de Referencia
+                        </Box>
+                      </Box>
+                    </Box>
+
                     <Box component="tbody">
-                      {rows.map((analyte) => {
-                        const value = analyte.valueNum ?? analyte.valueText ?? '—';
-                        const unit = analyte.unit || analyte.itemDef.unit || '-';
+                      {singleItems.map((item) => {
+                        const a = item.analytes[0]; // único analito
+                        const valueRaw = a.valueNum ?? a.valueText ?? '—';
+                        const unit = a.unit || a.itemDef.unit || '-';
+
                         const refRaw = shouldApplySexAgeFilter({
-                          itemKey: analyte.itemDef.key,
-                          itemLabel: analyte.itemDef.label?.toUpperCase?.(),
+                          itemKey: a.itemDef.key,
+                          itemLabel: a.itemDef.label?.toUpperCase?.(),
                           examName: item.examType.name?.toUpperCase?.(),
                         })
-                          ? refTextBySexAndAge(analyte.itemDef.refText, sex, age)
-                          : (analyte.itemDef.refText || '—');
+                          ? refTextBySexAndAge(a.itemDef.refText, sex, age)
+                          : (a.itemDef.refText || '—');
 
                         const refText = refRaw && refRaw !== '—' ? withUnit(refRaw, unit) : refRaw;
 
                         return (
-                          <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
-                            <Box component="td" sx={{ p: '12px' }}>{capitalize(analyte.itemDef.label)}</Box>
-                            <Box component="td" sx={{ p: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}>{typeof value === 'string' ? capitalize(value) : value}</Box>
-                            <Box component="td" sx={{ p: '12px', textAlign: 'center', color: '#666' }}>{unit}</Box>
-                            <Box component="td" sx={{ p: '12px', color: '#666', fontSize: '13px' }}>{refText || '—'}</Box>
+                          <Box component="tr" key={a.id} sx={{ borderBottom: '1px solid #eee' }}>
+                            <Box component="td" sx={{ p: '5px' }}>
+                              <Box>{capitalize(a.itemDef.label)}</Box>
+                              {a?.itemDef?.method &&
+                                a.itemDef.method !== '-' &&
+                                a.itemDef.method !== 'N/A' && (
+                                  <Box sx={{ mt: 0.25, fontSize: '10px', color: '#666' }}>
+                                    Met. {a.itemDef.method}
+                                  </Box>
+                                )}
+                            </Box>
+                            <Box component="td" sx={{ pr: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '13px' }}>
+                              {typeof valueRaw === 'number' ? fmtNum(valueRaw) : valueRaw}
+                            </Box>
+                            <Box component="td" sx={{ pr: '12px', textAlign: 'center', color: '#666' }}>
+                              {unit}
+                            </Box>
+                            <Box component="td" sx={{ pr: '12px', color: '#666', fontSize: '13px' }}>
+                              {capitalize(refText) || '—'}
+                            </Box>
                           </Box>
                         );
                       })}
                     </Box>
-                  );
-
-                  const Section = ({ title, rows }: { title: string; rows: typeof item.analytes }) => {
-                    if (!rows.length) return null;
-                    return (
-                      <Box sx={{ mb: 2 }}>
-                        <Box sx={{
-                          backgroundColor: '#f1f8ff', borderLeft: '4px solid #1976d2',
-                          px: 1.5, py: 0.75, mb: 1, fontWeight: 700, color: '#1976d2'
-                        }}>
-                          {title}
-                        </Box>
-                        <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                          <Box component="thead">
-                            <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
-                              <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>Determinación</Box>
-                              <Box component="th" sx={{ p: '10px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>Resultado</Box>
-                              <Box component="th" sx={{ p: '10px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>Unidad</Box>
-                              <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>Valores de Referencia</Box>
-                            </Box>
-                          </Box>
-                          {renderRows(rows)}
-                        </Box>
-                      </Box>
-                    );
-                  };
-
-                  return (
-                    <Box>
-                      <Section title={urinePrefixTitle.EF} rows={groups.EF} />
-                      <Section title={urinePrefixTitle.EQ} rows={groups.EQ} />
-                      <Section title={urinePrefixTitle.EM} rows={groups.EM} />
-                      {isUrineExamCode(item.examType.code) && (
-                        <Box sx={{ fontSize: '15px', color: '#030000ff', fontStyle: 'italic', mb: 1.5, pl: 1 }}>
-                          Muestra remitida
-                        </Box>
-                      )}
-                    </Box>
-                  );
-                })()
-              ) : (
-                // === Resto de estudios (sin agrupación) ===
-                <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                  <Box component="thead">
-                    <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
-                      <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold' }}>Determinación</Box>
-                      <Box component="th" sx={{ p: '10px', textAlign: 'right', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '120px' }}>Resultado</Box>
-                      <Box component="th" sx={{ p: '10px', textAlign: 'center', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '80px' }}>Unidad</Box>
-                      <Box component="th" sx={{ p: '10px', textAlign: 'left', borderBottom: '2px solid #ddd', fontWeight: 'bold', width: '180px' }}>Valores de Referencia</Box>
-                    </Box>
-                  </Box>
-                  <Box component="tbody">
-                    {item.analytes.map((analyte) => {
-                      const value = analyte.valueNum ?? analyte.valueText ?? '—';
-                      const unit = analyte.unit || analyte.itemDef.unit || '-';
-                      const refRaw = shouldApplySexAgeFilter({
-                        itemKey: analyte.itemDef.key,
-                        itemLabel: analyte.itemDef.label?.toUpperCase?.(),
-                        examName: item.examType.name?.toUpperCase?.(),
-                      })
-                        ? refTextBySexAndAge(analyte.itemDef.refText, sex, age)
-                        : (analyte.itemDef.refText || '—');
-                      const refText = refRaw && refRaw !== '—' ? withUnit(refRaw, unit) : refRaw;
-
-                      return (
-                        <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
-                          <Box component="td" sx={{ p: '12px' }}>
-                            <Box>{capitalize(analyte.itemDef.label)}</Box>
-                            {analyte?.itemDef?.method &&
-                              analyte.itemDef.method !== '-' &&
-                              analyte.itemDef.method !== 'N/A' && (
-                                <Box sx={{ mt: 0.25, fontSize: '10px', color: '#666' }}>
-                                  Met. {analyte.itemDef.method}
-                                </Box>
-                              )}
-                          </Box>
-                          <Box component="td" sx={{ p: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '15px' }}>{value}</Box>
-                          <Box component="td" sx={{ p: '12px', textAlign: 'center', color: '#666' }}>{unit}</Box>
-                          <Box component="td" sx={{ p: '12px', color: '#666', fontSize: '13px' }}>{refText || '—'}</Box>
-                        </Box>
-                      );
-                    })}
                   </Box>
                 </Box>
               )}
-            </Box>
+            </>
           );
-        })}
+        })()}
+
 
         {/* Observaciones */}
         {order.notes && (
@@ -338,9 +482,9 @@ export default function ReportPage() {
         )}
 
         {/* Firma */}
-        <Box sx={{ mt: 6, pt: 2, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-around' }}>
+        <Box sx={{ mt: 6, pt: 2, display: 'flex', justifyContent: 'space-around' }}>
           <Box sx={{ textAlign: 'center', minWidth: '200px' }}>
-            <Box sx={{ borderTop: '1px solid #333', mt: '50px', pt: '8px', fontSize: '12px', color: '#666' }}>
+            <Box sx={{ borderTop: '1px solid #333', pt: '8px', fontSize: '12px', color: '#666' }}>
               Firma del Profesional
             </Box>
           </Box>

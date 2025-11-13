@@ -5,7 +5,7 @@ export const SEX_AGE_FILTER_KEYS = new Set<string>([
   // 👉 Agregá acá los itemDef.key (o labels) que SÍ deben filtrar por sexo+edad
 //   // 'NEUTROFILOS_SEGMENTADOS',
 //   // 'LINFOCITOS',
-`TESTOSTERONA_TOTAL`,'CPK','PROLACTINA',
+`TESTOSTERONA_TOTAL`,'CPK','PROLACTINA','URICEMIA'
 ]);
 export const SEX_AGE_FILTER_EXAM_NAMES = new Set<string>([
   // 👉 O por nombre de estudio (si corresponde, ej. 'HEMOGRAMA')
@@ -106,6 +106,7 @@ export function refTextBySexAndAge(
   if (!refText) return '';
   const t = String(refText).replace(/\s+/g, ' ').trim();
   const s = normalizeSex(sex);
+  
   if (!s) return t;
 
   // Si no tiene F: y M:, no filtramos
@@ -125,6 +126,7 @@ export function refTextBySexAndAge(
 
   const ageM = ageYearsToMonths(ageYears);
   const found = list.find(r => ageM >= r.min && ageM <= r.max);
+  console.log(found)
   return (found?.valueText || block || t).trim();
 }
 
@@ -136,7 +138,7 @@ export function shouldApplySexAgeFilter(opts: {
 }): boolean {
   const { itemKey, itemLabel, examName } = opts;
   if (itemKey && SEX_AGE_FILTER_KEYS.has(itemKey)) return true;
-
+   
   // también permitir por label exactamente (si no tienes key todavía)
   if (itemLabel && SEX_AGE_FILTER_KEYS.has(itemLabel)) return true;
   if (examName && SEX_AGE_FILTER_EXAM_NAMES.has(examName.toUpperCase())) return true;

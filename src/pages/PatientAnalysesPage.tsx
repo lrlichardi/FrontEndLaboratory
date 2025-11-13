@@ -59,8 +59,7 @@ export default function PatientAnalysesPage() {
   const [paidNow, setPaidNow] = useState('');
   // 👇 lista de médicos desde el back
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-
-
+ 
   const [errs, setErrs] = useState<Record<string, string>>({});
   const [codeErrs, setCodeErrs] = useState<string[]>([]);
 
@@ -250,11 +249,12 @@ export default function PatientAnalysesPage() {
   const filterLocal = (q: string) => {
     if (!allNomen) return [];
     const s = q.trim().toLowerCase();
+    const b = 66 + s
     if (!s) return [];
-    const isNum = /^\d+$/.test(s);
+    const isNum = /^\d+$/.test(b);
     const pool = allNomen;
     const filtered = isNum
-      ? pool.filter(r => String(r.codigo).startsWith(s))
+      ? pool.filter(r => String(r.codigo).startsWith(b))
       : pool.filter(r => r.determinacion.toLowerCase().includes(s));
     return filtered.slice(0, 20).map(r => ({
       value: String(r.codigo),
