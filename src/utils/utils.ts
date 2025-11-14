@@ -16,3 +16,11 @@ export const uniqueCodes = (arr: string[]) => {
   for (const c of arr) if (!seen.has(c)) { seen.add(c); out.push(c); }
   return out;
 };
+
+  export const toDDMMYYYY = (input: string | number | Date) => {
+  const d = new Date(input || Date.now());
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
+};

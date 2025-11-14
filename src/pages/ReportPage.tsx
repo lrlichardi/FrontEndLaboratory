@@ -4,7 +4,7 @@ import { Box, Button, CircularProgress, Alert } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { getOrder, type TestOrder } from '../api';
-import { capitalize } from '../utils/utils';
+import { capitalize, toDDMMYYYY } from '../utils/utils';
 // Helpers sexo/edad (ajustá la ruta si difiere)
 import { shouldApplySexAgeFilter, refTextBySexAndAge } from '../utils/refTextSexAge';
 // Agrupador de orina
@@ -48,7 +48,29 @@ export default function ReportPage() {
       .finally(() => setLoading(false));
   }, [orderId]);
 
-  const handlePrint = () => window.print();
+
+
+  const buildPdfName = (order: TestOrder) => {
+  const last = (order.patient.lastName || '').trim();
+  const first = (order.patient.firstName || '').trim();
+  const date = toDDMMYYYY(order.createdAt); //
+  // quitar tildes y caracteres raros para filename
+  const sanitize = (s: string) =>
+    s.normalize('NFD')
+     .replace(/[\u0300-\u036f]/g, '')
+     .replace(/[^\w\-]+/g, '_')
+     .replace(/_+/g, '_')
+     .replace(/^_|_$/g, '');
+
+  return `${sanitize(last)}_${sanitize(first)}_${date}.pdf`;
+};
+  const handlePrint = () => {
+  const prevTitle = document.title;
+  document.title = buildPdfName(order);
+  window.print();
+  // restaurar el título luego de que se abre el diálogo de impresión
+  setTimeout(() => { document.title = prevTitle; }, 2000);
+};
 
   const handleBack = () => {
     if (location.state?.from) {

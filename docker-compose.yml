@@ -1,0 +1,43 @@
+services:
+  backend:
+    image: ghcr.io/<tu_user>/<tu_repo>-backend:latest
+    # Para desarrollo local rápido, podés cambiar "image" por "build: ./docker/backend"
+    env_file: .env
+    environment:
+      DATABASE_URL: "file:/data/sqlite.db"
+      NODE_ENV: "production"
+      # agrega aquí tus variables del backend (PORT, etc.)
+    volumes:
+      - backend_data:/data              # SQLite persiste acá
+    ports:
+      - "3001:3001"                     # backend local
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  frontend:
+    image: ghcr.io/<tu_user>/<tu_repo>-frontend:latest
+    # Para desarrollo local rápido, podés cambiar "image" por "build: ./docker/frontend"
+    env_file: .env
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"                       # web local http://localhost:8080
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - --interval=60
+      - --cleanup
+      - --include-restarting
+    restart: unless-stopped
+
+volumes:
+  backend_data:
