@@ -10,12 +10,14 @@ import DoctorsPage from './pages/DoctorsPage';
 import SocialWorksPage from './pages/SocialWorksPage';
 import PatientAccountPage from './pages/PatientAccountPage';
 import PrintGuidePage from './pages/PrintGuidePage';
+import HomePage from './pages/HomePage';
+import NotFoundPage from './pages/NotFoundPage';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<AppNav />}>
-        <Route index element={<PatientsPage />} />
+        <Route path="/" element={<HomePage />} />
         <Route path="patients" element={<PatientsPage />} />
         <Route path="patients/:patientId/analyses" element={<PatientAnalysesPage />} />
         <Route path="orders/:orderId" element={<OrderDetailPage />} />
@@ -26,6 +28,7 @@ export default function App() {
         <Route path="social-works" element={<SocialWorksPage />} />
         <Route path="/patients/:id/account" element={<PatientAccountPage />} />
         <Route path="/orders/:orderId/guide" element={<PrintGuidePage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );

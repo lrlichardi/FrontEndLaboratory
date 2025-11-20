@@ -16,7 +16,7 @@ import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/
 import NomenMiniTable from '../components/NomenMiniTable';
 
 type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string | number };
-type NomenOpt = { label: string; value: string; ub: number };
+export type NomenOpt = { label: string; value: string; ub: number };
 
 export default function OrderDetailPage() {
   const { orderId = '' } = useParams();
