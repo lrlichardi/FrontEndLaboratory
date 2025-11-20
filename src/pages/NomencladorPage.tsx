@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { TextField, Box } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { getNomencladorAll, type Nomen } from '../api';
+import { getNomencladorAll, type Nomen } from '../api/OrderApi';
 
 export default function NomencladorPage() {
   const [rows, setRows] = useState<Nomen[]>([]);
@@ -23,7 +23,9 @@ export default function NomencladorPage() {
   ];
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto' }}>
+    <Box sx={{ maxWidth: 1200, mx: 'auto', backgroundColor: 'rgba(255, 255, 255, 0.82)', p:2,
+      backdropFilter: 'blur(4px)',
+      border: 'none'}}>
       <TextField
         label="Buscar"
         size="small"

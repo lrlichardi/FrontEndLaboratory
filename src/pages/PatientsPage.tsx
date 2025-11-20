@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Snackbar, Alert, Box, Button, IconButton, Paper, Stack, TextField, Tooltip } from '@mui/material';
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import type { Patient } from '../api';
-import { listPatients, createPatient, updatePatient, deletePatient } from '../api';
+import { listPatients, createPatient, updatePatient, deletePatient , type Patient  } from '../api/PatientApi';
 import PatientFormDialog from '../components/PatientFormDialog';
 
 export default function PatientsPage() {
@@ -29,9 +28,9 @@ export default function PatientsPage() {
   const navigate = useNavigate();
 
   const cols: GridColDef[] = useMemo(() => [
-    { field: 'dni', headerName: 'DNI', flex: 1, minWidth: 120 },
+    { field: 'dni', headerName: 'DNI', flex: 1, minWidth: 80 },
     { field: 'firstName', headerName: 'Nombre', flex: 1, minWidth: 140 },
-    { field: 'lastName', headerName: 'Apellido', flex: 1, minWidth: 140 },
+    { field: 'lastName', headerName: 'Apellido', flex: 1, minWidth: 180 },
     { field: 'birthDate', headerName: 'Nacimiento', flex: 1, minWidth: 130, valueGetter: (p) => (p.row.birthDate || '').slice(0, 10) },
     { field: 'sex', headerName: 'Sexo', width: 90 },
     { field: 'phone', headerName: 'Teléfono', flex: 1, minWidth: 140 },
@@ -119,7 +118,7 @@ export default function PatientsPage() {
       setDialogOpen(false);
       setNotice({
         open: true,
-        message: res?.message || (editing ? 'Paciente actualizado' : 'Paciente creado'),
+        message: (res as any)?.message || (editing ? 'Paciente actualizado' : 'Paciente creado'),
       });
       await fetchData();
     } catch (e: any) {
@@ -133,7 +132,11 @@ export default function PatientsPage() {
   };
 
   return (
-    <Paper sx={{ p: 2 }}>
+    <Paper sx={{
+      p: 2, backgroundColor: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(4px)',
+      border: 'none'
+    }} >
       <Snackbar
         open={notice.open}
         autoHideDuration={3000}
@@ -166,7 +169,7 @@ export default function PatientsPage() {
           getRowId={(r) => r.id}
           columns={cols}
           loading={loading}
-          pageSizeOptions={[10, 20, 50]}
+          pageSizeOptions={[10, 20, 50 , 100]}
           pagination
           paginationMode="server"
           onPaginationModelChange={({ page: p, pageSize: ps }) => { setPage(p); setPageSize(ps); }}

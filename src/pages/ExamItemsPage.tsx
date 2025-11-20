@@ -11,11 +11,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import {
   fetchExamItemsByCode, createExamItemDef, updateExamItemDef, deleteExamItemDef,
   type ExamItemDef
-} from '../api';
+} from '../api/ExamItemDefApi';
 
-const KINDS = ['NUMERIC','TEXT', 'BOOLEAN', 'ENUM'];
+const KINDS = ['NUMERIC', 'TEXT', 'BOOLEAN', 'ENUM'];
 
-const method = ['-' ,'Enzimático', 'Cinético','Humedo', 'ELISA', 'Quimioluminiscencia', 'Calmagita' ,'Turbidimetría' , 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico', 'Arsenazo' ,'Aglutinación' ];
+const method = ['-', 'Enzimático', 'Cinético', 'Humedo', 'ELISA', 'Quimioluminiscencia', 'Calmagita', 'Turbidimetría', 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico', 'Arsenazo', 'Aglutinación'];
 
 export default function ExamItemsPage() {
   const [code, setCode] = useState('');
@@ -28,8 +28,8 @@ export default function ExamItemsPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ExamItemDef | null>(null);
-  const [form, setForm] = useState({ key: '', label: '', unit: '', kind: 'NUMERIC', method:'Enzimático' ,sortOrder: 0, refText: ''});
-  
+  const [form, setForm] = useState({ key: '', label: '', unit: '', kind: 'NUMERIC', method: 'Enzimático', sortOrder: 0, refText: '' });
+
   const load = async () => {
     if (!/^\d{5,7}$/.test(code.trim())) { setErr('Ingresá un código válido (5–7 dígitos)'); return; }
     setLoading(true); setErr(null);
@@ -64,7 +64,7 @@ export default function ExamItemsPage() {
             setEditing(p.row as ExamItemDef);
             setForm({
               key: p.row.key, label: p.row.label, unit: p.row.unit || '',
-              kind: p.row.kind || 'NUMERIC', method: p.row.method || 'Enzimático' ,  sortOrder: p.row.sortOrder ?? 0,
+              kind: p.row.kind || 'NUMERIC', method: p.row.method || 'Enzimático', sortOrder: p.row.sortOrder ?? 0,
               refText: p.row.refText || ''
             });
             setOpen(true);
@@ -85,7 +85,7 @@ export default function ExamItemsPage() {
 
   const onOpenNew = () => {
     setEditing(null);
-    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', method:'Enzimático',  sortOrder: rows.length, refText: '' });
+    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', method: 'Enzimático', sortOrder: rows.length, refText: '' });
     setOpen(true);
   };
 
@@ -95,7 +95,7 @@ export default function ExamItemsPage() {
       if (!/^\d{5,7}$/.test(code.trim())) { setErr('Ingresá un código válido'); return; }
 
       if (editing) {
-        
+
         await updateExamItemDef(editing.id, {
           key: form.key.trim(),
           label: form.label.trim(),
@@ -125,7 +125,11 @@ export default function ExamItemsPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{
+      backgroundColor: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(4px)',
+      border: 'none', p: 2
+    }}>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>ExamItems (definiciones por código)</Typography>
 
       <Grid container spacing={1} alignItems="center" sx={{ mb: 1 }}>
@@ -148,8 +152,13 @@ export default function ExamItemsPage() {
             </Typography>
           </Grid>
         )}
-        <Grid item xs="auto">
-          <Button startIcon={<AddIcon />} onClick={onOpenNew} variant="outlined" disabled={!code || loading}>
+        <Grid item xs="auto" sx={{ ml: 'auto' }}>
+          <Button
+            startIcon={<AddIcon />}
+            onClick={onOpenNew}
+            variant="outlined"
+            disabled={!code || loading}
+          >
             Nuevo ítem
           </Button>
         </Grid>
@@ -191,7 +200,7 @@ export default function ExamItemsPage() {
                 fullWidth
                 multiline
               />
-              </Grid>
+            </Grid>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Tipo"
@@ -201,8 +210,8 @@ export default function ExamItemsPage() {
               >
                 {KINDS.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
               </TextField>
-              </Grid>
-              <Grid item xs={12} sm={6}>
+            </Grid>
+            <Grid item xs={12} sm={6}>
               <TextField
                 label="Metodo"
                 select fullWidth
@@ -210,9 +219,9 @@ export default function ExamItemsPage() {
                 onChange={e => setForm({ ...form, method: e.target.value })}
               >
                 {method.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
-                
+
               </TextField>
-              
+
             </Grid>
           </Grid>
         </DialogContent>

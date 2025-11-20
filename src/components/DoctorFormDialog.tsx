@@ -3,7 +3,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions,
   Grid, TextField, Button, MenuItem
 } from '@mui/material';
-import type { Doctor } from '../api';
+import type { Doctor } from '../api/DoctorApi';
 
 type Props = {
   open: boolean;

@@ -21,16 +21,14 @@ import {
   TextField,
   Tooltip,
   Typography,
-  Paper,
-  InputAdornment,          // 👈
+  InputAdornment,         
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
-
-import { listDoctors, createDoctor, updateDoctor, deleteDoctor, type Doctor } from '../api';
+import { listDoctors, createDoctor, updateDoctor, deleteDoctor, type Doctor } from '../api/DoctorApi';
 import DoctorFormDialog from '../components/DoctorFormDialog';
 
 export default function DoctorsPage() {
@@ -108,7 +106,11 @@ export default function DoctorsPage() {
   };
 
   return (
-    <Box>
+    <Box sx={{
+      backgroundColor: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(4px)',
+      border: 'none', p: 2
+    }}>
       <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 2 }}>
         <Typography variant="h4" fontWeight={700}>Doctores</Typography>
         <Box sx={{ flex: 1 }} />
@@ -133,10 +135,18 @@ export default function DoctorsPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Card>
+      <Card sx={{
+        backgroundColor: 'rgba(255, 255, 255, 0.82)',
+        backdropFilter: 'blur(4px)',
+        border: 'none', p: 1
+      }}>
         <CardContent>
-          <TableContainer component={Paper}>
-            <Table size="small">
+          <TableContainer >
+            <Table size="small" sx={{
+              backgroundColor: 'rgba(255, 255, 255, 0.82)',
+              backdropFilter: 'blur(4px)',
+              border: 'none'
+            }}>
               <TableHead>
                 <TableRow>
                   <TableCell><strong>Nombre</strong></TableCell>

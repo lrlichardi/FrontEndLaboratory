@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button, Grid, MenuItem, FormGroup, FormControlLabel, Checkbox } from '@mui/material';
 import dayjs from 'dayjs';
-import type { Patient } from '../api';
-import { listSocialWorks, type SocialWork } from '../api';
+import type { Patient } from '../api/PatientApi';
+import { listSocialWorks, type SocialWork } from '../api/SocialWorkApi';
 import { patientSchema } from '../validator/validatorForm';
 
 type Props = {
@@ -13,7 +13,7 @@ type Props = {
 };
 
 // extendemos el tipo por si Patient no declara estos campos
-type PatientX = Patient & { obraSocial?: string | null; codigoAfiliado?: string | null, notes?: string | null, diabetico?: boolean | null, tiroides?: boolean | null };
+type PatientX = Patient & { obraSocial?: string | null; codigoAfiliado?: string | null, diabetico?: boolean | null, tiroides?: boolean | null };
 
 const sexOptions = ['F', 'M'];
 
@@ -29,7 +29,6 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
     address: '',
     obraSocial: '',
     codigoAfiliado: '',
-    notes: '',
   });
 
   const [errs, setErrs] = useState<Record<string, string>>({});
@@ -81,7 +80,6 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
         address: '',
         email: '',
         phone: '',
-        notes: '',
         sex: '',
         birthDate: dayjs().subtract(30, 'year').format('YYYY-MM-DD'),
       }));
@@ -98,7 +96,7 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
       birthDate: new Date(values.birthDate as string).toISOString(),
     };
 
-    (['phone', 'email', 'address', 'obraSocial', 'codigoAfiliado', 'notes'] as const).forEach(k => {
+    (['phone', 'email', 'address', 'obraSocial', 'codigoAfiliado'] as const).forEach(k => {
       if (payload[k] === '') payload[k] = null;
     });
 
@@ -229,17 +227,6 @@ export default function PatientFormDialog({ open, onClose, onSubmit, initial }: 
               label="Tiroides"
             />
           </FormGroup>
-        </Grid>
-
-        <Grid item xs={12} sm={6}>
-          <TextField
-            label="Notas sobre el paciente"
-            value={values.notes || ''}
-            onChange={handleChange('notes')}
-            fullWidth
-            multiline
-            rows={3}
-          />
         </Grid>
       </DialogContent>
       <DialogActions>

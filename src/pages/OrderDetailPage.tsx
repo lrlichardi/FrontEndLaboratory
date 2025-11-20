@@ -10,12 +10,12 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import { getOrder, updateAnalytesBulk, deleteOrderItem, type TestOrder, type OrderItemAnalyte, addOrderItemsByCodes, getNomencladorAll } from '../api';
+import { getOrder, updateAnalytesBulk, deleteOrderItem, type TestOrder, type OrderItemAnalyte, addOrderItemsByCodes, getNomencladorAll } from '../api/OrderApi';
 import { capitalize } from '../utils/utils';
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
 import NomenMiniTable from '../components/NomenMiniTable';
 
-type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string };
+type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string | number };
 type NomenOpt = { label: string; value: string; ub: number };
 
 export default function OrderDetailPage() {
@@ -27,7 +27,7 @@ export default function OrderDetailPage() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [drafts, setDrafts] = useState<Record<string, DraftVal>>({});
   const dirty = Object.keys(drafts).length > 0;
-  
+
   // Estados para el modal de agregar códigos
   const [addOpen, setAddOpen] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -41,7 +41,7 @@ export default function OrderDetailPage() {
   // Índice de nomenclador para búsqueda rápida
   const nomenIndex = useMemo(() => {
     const m = new Map<string, { determinacion: string; ub: number }>();
-    (allNomen || []).forEach((n: any) => 
+    (allNomen || []).forEach((n: any) =>
       m.set(String(n.codigo), { determinacion: n.determinacion, ub: n.ub })
     );
     return m;
@@ -121,10 +121,10 @@ export default function OrderDetailPage() {
   const selectedRows = useMemo(() => {
     return codes.map(c => {
       const n = nomenIndex.get(String(c));
-      return { 
-        codigo: c, 
-        determinacion: n?.determinacion ?? '(desconocido)', 
-        ub: n?.ub ?? 0 
+      return {
+        codigo: c,
+        determinacion: n?.determinacion ?? '(desconocido)',
+        ub: n?.ub ?? 0
       };
     });
   }, [codes, nomenIndex]);
@@ -134,23 +134,23 @@ export default function OrderDetailPage() {
   };
 
   const isFullCode = (v: string) => /^\d{6}$/.test(v);
-  
+
   const addCode = (raw: string) => {
     const v = (raw || '').trim();
     if (!isFullCode(v)) return;
-    
+
     // Verificar si ya existe en la orden
     if (existingCodes.includes(v)) {
       setAddErr(`El código ${v} ya está en la orden`);
       return;
     }
-    
+
     // Verificar si ya está en la lista a agregar
     if (codes.includes(v)) {
       setAddErr(`El código ${v} ya está en la lista`);
       return;
     }
-    
+
     setCodes(prev => [...prev, v]);
     setNomenInput('');
     setOpts([]);
@@ -255,6 +255,7 @@ export default function OrderDetailPage() {
   }
 
   const ABS_PAIRS = [
+    { pct: 'Neutrófilos segmentados', abs: 'Neutrófilos segmentados (abs)' },
     { pct: 'Eosinófilos', abs: 'Eosinófilos (Abs)' },
     { pct: 'Basófilos', abs: 'Basófilos (Abs)' },
     { pct: 'Linfocitos', abs: 'Linfocitos (Abs)' },
@@ -364,7 +365,11 @@ export default function OrderDetailPage() {
   }
 
   return (
-    <Box>
+    <Box sx={{
+      backgroundColor: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(4px)',
+      border: 'none', p: 2
+    }}>
       <style>{`
       @page { size: A4 portrait; margin: 8mm; }
       @media print {
@@ -386,12 +391,12 @@ export default function OrderDetailPage() {
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
-            onClick={() => { 
-              setCodes([]); 
-              setAddErr(null); 
+            onClick={() => {
+              setCodes([]);
+              setAddErr(null);
               setNomenInput('');
               setOpts([]);
-              setAddOpen(true); 
+              setAddOpen(true);
             }}
           >
             Agregar códigos
@@ -417,7 +422,11 @@ export default function OrderDetailPage() {
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <Card sx={{ mb: 3 }}>
+      <Card sx={{
+        mb: 3, backgroundColor: 'rgba(255, 255, 255, 0.82)',
+        backdropFilter: 'blur(4px)',
+        border: 'none'
+      }}>
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
@@ -438,6 +447,10 @@ export default function OrderDetailPage() {
                 {new Date(order.createdAt).toLocaleDateString('es-AR')}
               </Typography>
             </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Protocolo</Typography>
+              <Typography variant="body1" fontWeight={600}>{order.id || '—'}</Typography>
+            </Grid>
             {order.notes && (
               <Grid item xs={12}>
                 <Typography variant="caption" color="text.secondary">Observaciones</Typography>
@@ -452,7 +465,7 @@ export default function OrderDetailPage() {
         Estudios ({order.items.length})
       </Typography>
 
-      <TableContainer className="print-only" component={Paper}>
+      <TableContainer className="print-only" component={Paper} >
         <Table>
           <TableHead>
             <TableRow>
@@ -523,9 +536,18 @@ export default function OrderDetailPage() {
 
                 return (
                   <Fragment key={item.id}>
-                    <TableRow hover>
+                    <TableRow hover
+                      sx={{ cursor: 'pointer' }}
+                      onClick={() => toggle(item.id)}
+                    >
                       <TableCell width={48}>
-                        <IconButton size="small" onClick={() => toggle(item.id)}>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggle(item.id);
+                          }}
+                        >
                           {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
                         </IconButton>
                       </TableCell>
@@ -799,12 +821,29 @@ export default function OrderDetailPage() {
         </Table>
       </TableContainer>
 
+      <Box
+        className="no-print"
+        sx={{
+          mt: 2,
+          display: 'flex',
+          justifyContent: 'flex-end',
+        }}
+      >
+        <Button
+          variant="contained"
+          disabled={!dirty || saving}
+          onClick={handleSaveAll}
+        >
+          {saving ? 'Guardando…' : 'Guardar cambios'}
+        </Button>
+      </Box>
+
       <Dialog open={addOpen} onClose={() => setAddOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Agregar códigos a la orden</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {addErr && <Alert severity="error">{addErr}</Alert>}
-            
+
             <Autocomplete
               freeSolo
               options={opts}
@@ -856,7 +895,7 @@ export default function OrderDetailPage() {
             onClick={async () => {
               if (!order) return;
               try {
-                setAdding(true); 
+                setAdding(true);
                 setAddErr(null);
                 await addOrderItemsByCodes(order.id, codes);
                 setAddOpen(false);

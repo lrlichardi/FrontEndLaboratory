@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link as RouterLink } from 'react-router-dom';
 import { Box, Stack, Typography, Button } from '@mui/material';
-import PatientAccountTab from '../components/PatientAccountTab'; // o la ruta donde lo tengas
-import { listOrders, getPatient } from '../api';
+import PatientAccountTab from '../components/PatientAccountTab'; 
+import { getPatient } from '../api/PatientApi';
+import {listOrders} from '../api/OrderApi';
 
 type OrderMin = { id: string; orderNumber?: string | null };
 

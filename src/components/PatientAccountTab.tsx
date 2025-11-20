@@ -5,7 +5,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid'
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
 import dayjs from 'dayjs'
-import { listAccountEntries, getAccountSummary, createAccountEntry, deleteAccountEntry, type AccountEntry } from '../api'
+import { listAccountEntries, getAccountSummary, createAccountEntry, deleteAccountEntry, type AccountEntry } from '../api/accountApi'
 
 type Kind = 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT';
 

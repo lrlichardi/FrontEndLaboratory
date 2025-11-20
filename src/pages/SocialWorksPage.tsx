@@ -11,7 +11,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import {
   listSocialWorks, createSocialWork, updateSocialWork, deleteSocialWork,
   type SocialWork
-} from '../api';
+} from '../api/SocialWorkApi';
 
 export default function SocialWorksPage() {
   const [rows, setRows] = useState<SocialWork[]>([]);
@@ -91,7 +91,14 @@ export default function SocialWorksPage() {
   };
 
   return (
-    <Paper sx={{ p: 2 }}>
+    <Box sx={{          
+        display: 'flex',
+        justifyContent: 'center',    
+        alignItems: 'center',       
+      }}>
+    <Paper sx={{ p: 2, backgroundColor: 'rgba(255, 255, 255, 0.82)',
+      backdropFilter: 'blur(4px)',
+      border: 'none',width: '50%'}}>
       <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
         <TextField
           size="small"
@@ -152,5 +159,6 @@ export default function SocialWorksPage() {
         </Alert>
       </Snackbar>
     </Paper>
+    </Box>
   );
 }

@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation, Link as RouterLink } from 'react-r
 import { Box, Button, CircularProgress, Alert, Typography } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { getOrder, type TestOrder, type OrderItemAnalyte } from '../api';
+import { getOrder, type TestOrder, type OrderItemAnalyte } from '../api/OrderApi';
 import { capitalize } from '../utils/utils';
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
 
@@ -84,89 +84,95 @@ export default function PrintGuidePage() {
 
   return (
     <>
-      {/* Acciones visibles solo en pantalla */}
-      <Box className="no-print" sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'white', p: 1, borderBottom: '1px solid #eee' }}>
-        <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mr: 1 }}>
-          Volver
-        </Button>
-        <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}>
-          Imprimir / PDF
-        </Button>
-        <Button component={RouterLink} to={`/orders/${orderId}`} sx={{ ml: 1 }}>
-          Ir al detalle de carga
-        </Button>
-      </Box>
-
-      {/* Contenido a imprimir */}
-      <Box id="guide-root" sx={{
-        maxWidth: '800px',
-        m: '0 auto',
-        backgroundColor: 'white',
-        minHeight: '100vh',
-        px: 2,
-        pb: 4,
-        fontFamily: 'Arial, sans-serif',
+      <Box sx={{
+        backgroundColor: 'rgba(255, 255, 255, 0.82)',
+        backdropFilter: 'blur(4px)',
+        border: 'none'
       }}>
-        {/* Encabezado comprimido */}
-        <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', mb: 1 }}>
-          <Typography component="h1" sx={{ fontSize: 18, fontWeight: 800, letterSpacing: 0.2 }}>GUÍA DE CARGA</Typography>
+        {/* Acciones visibles solo en pantalla */}
+        <Box className="no-print" sx={{ position: 'sticky', top: 0, zIndex: 2, bgcolor: 'white', p: 1, borderBottom: '1px solid #eee' }}>
+          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={handleBack} sx={{ mr: 1 }}>
+            Volver
+          </Button>
+          <Button variant="contained" startIcon={<PrintIcon />} onClick={handlePrint}>
+            Imprimir / PDF
+          </Button>
+          <Button component={RouterLink} to={`/orders/${orderId}`} sx={{ ml: 1 }}>
+            Ir al detalle de carga
+          </Button>
         </Box>
 
-        {/* Datos del paciente (compacto en 2 columnas) */}
-        <Box sx={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 1, rowGap: 0.5,
-          fontSize: 12, mb: 1.5
+        {/* Contenido a imprimir */}
+        <Box id="guide-root" sx={{
+          maxWidth: '800px',
+          m: '0 auto',
+          backgroundColor: 'white',
+          minHeight: '100vh',
+          px: 2,
+          pb: 4,
+          fontFamily: 'Arial, sans-serif',
         }}>
-          <Box><strong>Paciente:</strong> {order.patient.lastName}, {order.patient.firstName}</Box>
-          <Box><strong>DNI:</strong> {order.patient.dni || '—'}</Box>
-          <Box><strong>N° Orden:</strong> {order.orderNumber || '—'}</Box>
-          <Box><strong>Fecha:</strong> {new Date(order.createdAt).toLocaleDateString('es-AR')}</Box>
-          <Box><strong>Médico:</strong> {order.doctor?.fullName || '—'}</Box>
-          <Box><strong>Ítems:</strong> {rows.length}</Box>
-        </Box>
+          {/* Encabezado comprimido */}
+          <Box sx={{ textAlign: 'center', borderBottom: '2px solid #000', mb: 1 }}>
+            <Typography component="h1" sx={{ fontSize: 18, fontWeight: 800, letterSpacing: 0.2 }}>GUÍA DE CARGA</Typography>
+          </Box>
 
-        {/* === NUEVO: Dos columnas mitad/mitad sin código === */}
-        {(() => {
-          const mid = Math.ceil(rows.length / 2);
-          const left = rows.slice(0, mid);
-          const right = rows.slice(mid);
-          const Table = ({ data }: { data: Row[] }) => (
-            <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
-              <Box component="thead" sx={{ display: 'table-header-group' }}>
-                <Box component="tr">
-                  <Box component="th" sx={{ textAlign: 'left', borderBottom: '1px solid #000', p: '3px 4px' }}>Determinación / Sección</Box>
-                  <Box component="th" sx={{ textAlign: 'left', borderBottom: '1px solid #000', p: '3px 4px', width: 150 }}>Resultado</Box>
+          {/* Datos del paciente (compacto en 2 columnas) */}
+          <Box sx={{
+            display: 'grid', gridTemplateColumns:'repeat(3, 1fr)', 
+            fontSize: 12, mb: 0.5
+          }}>
+            <Box><strong>Paciente:</strong> {order.patient.lastName}, {order.patient.firstName}</Box>
+            <Box><strong>DNI:</strong> {order.patient.dni || '—'}</Box>
+            <Box><strong>N° Orden:</strong> {order.orderNumber || '—'}</Box>
+            <Box><strong>Fecha:</strong> {new Date(order.createdAt).toLocaleDateString('es-AR')}</Box>
+            <Box><strong>Médico:</strong> {order.doctor?.fullName || '—'}</Box>
+            <Box><strong>Ítems:</strong> {rows.length}</Box>
+            <Box><strong>Protocolo:</strong> {order.id}</Box>
+          </Box>
+
+          {/* === NUEVO: Dos columnas mitad/mitad sin código === */}
+          {(() => {
+            const mid = Math.ceil(rows.length / 2);
+            const left = rows.slice(0, mid);
+            const right = rows.slice(mid);
+            const Table = ({ data }: { data: Row[] }) => (
+              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+                <Box component="thead" sx={{ display: 'table-header-group' }}>
+                  <Box component="tr">
+                    <Box component="th" sx={{ textAlign: 'left', borderBottom: '1px solid #000', p: '3px 4px' }}>Determinación / Sección</Box>
+                    <Box component="th" sx={{ textAlign: 'left', borderBottom: '1px solid #000', p: '3px 4px', width: 150 }}>Resultado</Box>
+                  </Box>
+                </Box>
+                <Box component="tbody">
+                  {data.map((r, i) => (
+                    <Box component="tr" key={i} sx={{ pageBreakInside: 'avoid' }}>
+                      <Box component="td" sx={{ p: '2px 4px' }}>
+                        {r.section === 'header' ? (
+                          <span style={{ fontWeight: 700 }}>{r.label}</span>
+                        ) : (
+                          r.label
+                        )}
+                      </Box>
+                      <Box component="td" sx={{ p: 0 }}>
+                        <Box sx={{ height: 16, borderBottom: '1px dotted #666', mx: 0.5 }} />
+                      </Box>
+                    </Box>
+                  ))}
                 </Box>
               </Box>
-              <Box component="tbody">
-                {data.map((r, i) => (
-                  <Box component="tr" key={i} sx={{ pageBreakInside: 'avoid' }}>
-                    <Box component="td" sx={{ p: '2px 4px' }}>
-                      {r.section === 'header' ? (
-                        <span style={{ fontWeight: 700 }}>{r.label}</span>
-                      ) : (
-                        r.label
-                      )}
-                    </Box>
-                    <Box component="td" sx={{ p: 0 }}>
-                      <Box sx={{ height: 16, borderBottom: '1px dotted #666', mx: 0.5 }} />
-                    </Box>
-                  </Box>
-                ))}
+            );
+            return (
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <Table data={left} />
+                <Table data={right} />
               </Box>
-            </Box>
-          );
-          return (
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <Table data={left} />
-              <Table data={right} />
-            </Box>
-          );
-        })()}
-      </Box>
+            );
+          })()}
+        </Box>
 
-      {/* Estilos de impresión optimizados para 1 hoja A4 y dos columnas */}
-      <style>{`
+        {/* Estilos de impresión optimizados para 1 hoja A4 y dos columnas */}
+        <style>{`
         @media print {
           @page { size: A4; margin: 8mm 8mm 10mm 8mm; }
           body * { visibility: hidden !important; }
@@ -179,7 +185,8 @@ export default function PrintGuidePage() {
           #guide-root .MuiBox-root[style*='grid-template-columns: 1fr 1fr'] { gap: 10px !important; }
         }
       `}
-      </style>
+        </style>
+      </Box>
     </>
   )
 }
