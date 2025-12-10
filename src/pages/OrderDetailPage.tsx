@@ -430,6 +430,10 @@ export default function OrderDetailPage() {
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">Nombre</Typography>
+              <Typography variant="body1" fontWeight={600}>{order.patient.lastName + ' ' + order.patient.firstName || '—'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
               <Typography variant="caption" color="text.secondary">N° de Orden</Typography>
               <Typography variant="body1" fontWeight={600}>{order.orderNumber || '—'}</Typography>
             </Grid>

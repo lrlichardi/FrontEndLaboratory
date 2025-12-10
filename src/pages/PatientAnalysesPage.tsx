@@ -267,6 +267,7 @@ export default function PatientAnalysesPage() {
     const filtered = isNum
       ? pool.filter(r => String(r.codigo).startsWith(b))
       : pool.filter(r => r.determinacion.toLowerCase().includes(s));
+    console.log({ filtered });
     return filtered.slice(0, 20).map(r => ({
       value: String(r.codigo),
       label: `${r.codigo} — ${r.determinacion} (${r.ub} U.B.),`,
@@ -608,8 +609,13 @@ export default function PatientAnalysesPage() {
                 if (reason === 'input') setOpts(filterLocal(v));
               }}
               onChange={(_, opt) => {
-                const val = typeof opt === 'string' ? opt : (opt as any)?.value;
-                if (val) addCode(66 + val);
+                const raw = typeof opt === 'string' ? opt : (opt as any)?.value;
+                if (!raw) return;
+                let val = String(raw).trim();
+                if (/^\d{4}$/.test(val)) {
+                  val = `66${val}`;
+                }
+                addCode(val);
               }}
               renderInput={(params) => (
                 <TextField

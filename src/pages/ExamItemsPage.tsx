@@ -17,7 +17,7 @@ import { getNomencladorAll } from '../api/OrderApi'
 
 const KINDS = ['NUMERIC', 'TEXT', 'BOOLEAN', 'ENUM'];
 
-const method = ['-', 'Enzimático', 'Cinético', 'Humedo', 'ELISA', 'Quimioluminiscencia', 'Calmagita', 'Turbidimetría', 'ECLIA', 'Colorimetría', 'EQLIA', 'Color diazo', 'Inmunoturbidimetrico', 'Arsenazo', 'Aglutinación'];
+const method = ['-', 'Enzimático', 'Cinético', 'Humedo', 'ELISA', 'Quimioluminiscencia', 'Calmagita', 'Turbidimetría', 'ECLIA', 'Colorimetría', 'QLIA', 'Color diazo', 'Inmunoturbidimetrico', 'Arsenazo', 'Aglutinación'];
 
 export default function ExamItemsPage() {
   const [code, setCode] = useState('');
