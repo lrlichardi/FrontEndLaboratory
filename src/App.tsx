@@ -12,12 +12,14 @@ import PatientAccountPage from './pages/PatientAccountPage';
 import PrintGuidePage from './pages/PrintGuidePage';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
+import DashboardPage  from './pages/DashboardPage';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<AppNav />}>
         <Route path="/" element={<HomePage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="patients" element={<PatientsPage />} />
         <Route path="patients/:patientId/analyses" element={<PatientAnalysesPage />} />
         <Route path="orders/:orderId" element={<OrderDetailPage />} />

@@ -10,6 +10,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import ScienceIcon from '@mui/icons-material/Science';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety'
+import DashboardIcon from '@mui/icons-material/Dashboard';
 
 const links = [
   { to: '/', label: 'Inicio', icon: <HomeIcon />, exact: true },
@@ -18,7 +19,7 @@ const links = [
   { to: '/exam-items', label: 'ExamItems', icon: <ScienceIcon /> },
   { to: '/doctors', label: 'Doctores', icon: <MedicalServicesIcon /> },
   { to: '/social-works', label: 'Obras Sociales', icon: <HealthAndSafetyIcon /> },
-
+  { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
 ];
 
 export default function AppNav() {
