@@ -29,7 +29,7 @@ import type { NomenRow } from '../components/NomenMiniTable';
 import { STATUS_LABEL } from '../utils/status';
 import FlagChip from '../components/FlagChip';
 import DoctorFormDialog from '../components/DoctorFormDialog';
-
+import { apiGetPriceFactor } from '../api/priceFactorApi';
 
 export default function PatientAnalysesPage() {
   const { patientId = '' } = useParams();
@@ -58,6 +58,8 @@ export default function PatientAnalysesPage() {
   // manejo de fondos
   const [chargeTotal, setChargeTotal] = useState('');
   const [paidNow, setPaidNow] = useState('');
+  const [priceFactor, setPriceFactor] = useState<number | null>(null);
+
   // 👇 lista de médicos desde el back
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [doctorDialogOpen, setDoctorDialogOpen] = useState(false);
@@ -88,6 +90,20 @@ export default function PatientAnalysesPage() {
     setCodeErrs([]);
     setError(null);
   };
+
+  useEffect(() => {
+    if (!open) return;
+    if (priceFactor !== null) return;
+
+    (async () => {
+      try {
+        const f = await apiGetPriceFactor();
+        setPriceFactor(f);
+      } catch (e) {
+        console.error('No se pudo obtener el factor de precio', e);
+      }
+    })();
+  }, [open, priceFactor]);
 
   useEffect(() => {
     if (!open) return;
@@ -639,6 +655,12 @@ export default function PatientAnalysesPage() {
               rows={selectedRows}
               onRemove={handleRemoveCode}
               showTotals
+              priceFactor={
+                methodPay === 'Particular' ||
+                  methodPay === 'Obra Social + adicional'
+                  ? priceFactor
+                  : null
+              }
             />
 
             <Typography variant="body2" color="text.secondary">

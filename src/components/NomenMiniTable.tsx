@@ -1,6 +1,6 @@
 import {
   Paper, Table, TableHead, TableRow, TableCell,
-  TableBody, TableContainer, IconButton, TableFooter
+  TableBody, TableContainer, IconButton, TableFooter,Box
 } from '@mui/material';
 import type { SxProps, Theme } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -9,11 +9,15 @@ export type NomenRow = { codigo: string; determinacion: string; ub: number };
 
 type Props = {
   rows: NomenRow[];
-  onRemove?: (codigo: string) => void; 
+  onRemove?: (codigo: string) => void;
   maxHeight?: number | string;
   dense?: boolean;
   showTotals?: boolean;
-  containerSx?: SxProps<Theme>;   // ⬅️ nuevo prop opcional
+  containerSx?: SxProps<Theme>;
+  /** Factor de precio para calcular “Total a pagar”.
+   *  Si viene null/undefined, sólo se muestra Total U.B.
+   */
+  priceFactor?: number | null;
 };
 
 export default function NomenMiniTable({
@@ -23,8 +27,11 @@ export default function NomenMiniTable({
   dense = true,
   showTotals = true,
   containerSx,
+  priceFactor,
 }: Props) {
   const totalUB = rows.reduce((a, r) => a + (r.ub || 0), 0);
+  const totalToPay =
+    priceFactor != null && totalUB > 0 ? totalUB * priceFactor : null;
 
   return (
     <TableContainer
@@ -34,7 +41,7 @@ export default function NomenMiniTable({
         mt: 1,
         maxHeight,
         width: '100%',
-        ...(containerSx || {}),   // ⬅️ solo aplica lo que le pases
+        ...(containerSx || {}),
       }}
     >
       <Table size={dense ? 'small' : 'medium'} stickyHeader>
@@ -42,8 +49,14 @@ export default function NomenMiniTable({
           <TableRow>
             <TableCell width={120}>Código</TableCell>
             <TableCell>Determinación</TableCell>
-            <TableCell width={90} align="right">U.B.</TableCell>
-            {onRemove && <TableCell width={64} align="center">Acciones</TableCell>}
+            <TableCell width={90} align="right">
+              U.B.
+            </TableCell>
+            {onRemove && (
+              <TableCell width={64} align="center">
+                Acciones
+              </TableCell>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -56,24 +69,28 @@ export default function NomenMiniTable({
                 No hay códigos seleccionados.
               </TableCell>
             </TableRow>
-          ) : rows.map((r, index) => (
-            <TableRow key={`${r.codigo}-${index}`}>
-              <TableCell><code>{r.codigo}</code></TableCell>
-              <TableCell>{r.determinacion}</TableCell>
-              <TableCell align="right">{r.ub}</TableCell>
-              {onRemove && (
-                <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => onRemove(r.codigo)}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+          ) : (
+            rows.map((r, index) => (
+              <TableRow key={`${r.codigo}-${index}`}>
+                <TableCell>
+                  <code>{r.codigo}</code>
                 </TableCell>
-              )}
-            </TableRow>
-          ))}
+                <TableCell>{r.determinacion}</TableCell>
+                <TableCell align="right">{r.ub}</TableCell>
+                {onRemove && (
+                  <TableCell align="center">
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => onRemove(r.codigo)}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </TableCell>
+                )}
+              </TableRow>
+            ))
+          )}
         </TableBody>
 
         {showTotals && rows.length > 0 && (
@@ -83,7 +100,15 @@ export default function NomenMiniTable({
                 <strong>Ítems:</strong> {rows.length}
               </TableCell>
               <TableCell align="right">
-                <strong>Total U.B.:</strong> <strong>{totalUB}</strong>
+                <Box component="span" sx={{ whiteSpace: 'nowrap', mr: 1 }}>
+                  <strong>Total U.B.:</strong> {totalUB}
+                </Box>
+
+                {totalToPay != null && (
+                  <Box component="span" sx={{ whiteSpace: 'nowrap', ml: 1 }}>
+                    <strong>Total a pagar:</strong> ${totalToPay.toFixed(2)}
+                  </Box>
+                )}
               </TableCell>
               {onRemove && <TableCell />}
             </TableRow>
