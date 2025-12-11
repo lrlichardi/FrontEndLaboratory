@@ -135,7 +135,7 @@ export default function PatientsPage() {
     <Paper sx={{
       p: 2, backgroundColor: 'rgba(255, 255, 255, 0.82)',
       backdropFilter: 'blur(4px)',
-      border: 'none'
+      borderRadius: 3
     }} >
       <Snackbar
         open={notice.open}

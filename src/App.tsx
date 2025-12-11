@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate  } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import PatientsPage from './pages/PatientsPage'
 import PatientAnalysesPage from './pages/PatientAnalysesPage'
 import OrderDetailPage from './pages/OrderDetailPage'
@@ -12,7 +12,8 @@ import PatientAccountPage from './pages/PatientAccountPage';
 import PrintGuidePage from './pages/PrintGuidePage';
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
-import DashboardPage  from './pages/DashboardPage';
+import DashboardPage from './pages/DashboardPage';
+import PriceCalculatorPage from './pages/PriceCalculatorPage';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
         <Route path="social-works" element={<SocialWorksPage />} />
         <Route path="/patients/:id/account" element={<PatientAccountPage />} />
         <Route path="/orders/:orderId/guide" element={<PrintGuidePage />} />
+        <Route path="/price-calculator" element={<PriceCalculatorPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

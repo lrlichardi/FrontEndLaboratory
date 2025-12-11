@@ -2,6 +2,7 @@ import {
   Paper, Table, TableHead, TableRow, TableCell,
   TableBody, TableContainer, IconButton, TableFooter
 } from '@mui/material';
+import type { SxProps, Theme } from '@mui/material/styles';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 export type NomenRow = { codigo: string; determinacion: string; ub: number };
@@ -12,15 +13,30 @@ type Props = {
   maxHeight?: number | string;
   dense?: boolean;
   showTotals?: boolean;
+  containerSx?: SxProps<Theme>;   // ⬅️ nuevo prop opcional
 };
 
 export default function NomenMiniTable({
-  rows, onRemove, maxHeight = 260, dense = true, showTotals = true,
+  rows,
+  onRemove,
+  maxHeight = 260,
+  dense = true,
+  showTotals = true,
+  containerSx,
 }: Props) {
   const totalUB = rows.reduce((a, r) => a + (r.ub || 0), 0);
 
   return (
-    <TableContainer component={Paper} variant="outlined" sx={{ mt: 1, maxHeight }}>
+    <TableContainer
+      component={Paper}
+      variant="outlined"
+      sx={{
+        mt: 1,
+        maxHeight,
+        width: '100%',
+        ...(containerSx || {}),   // ⬅️ solo aplica lo que le pases
+      }}
+    >
       <Table size={dense ? 'small' : 'medium'} stickyHeader>
         <TableHead>
           <TableRow>
@@ -33,7 +49,10 @@ export default function NomenMiniTable({
         <TableBody>
           {rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={onRemove ? 4 : 3} sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+              <TableCell
+                colSpan={onRemove ? 4 : 3}
+                sx={{ color: 'text.secondary', fontStyle: 'italic' }}
+              >
                 No hay códigos seleccionados.
               </TableCell>
             </TableRow>
@@ -44,7 +63,11 @@ export default function NomenMiniTable({
               <TableCell align="right">{r.ub}</TableCell>
               {onRemove && (
                 <TableCell align="center">
-                  <IconButton size="small" color="error" onClick={() => onRemove(r.codigo)}>
+                  <IconButton
+                    size="small"
+                    color="error"
+                    onClick={() => onRemove(r.codigo)}
+                  >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
                 </TableCell>
@@ -56,8 +79,12 @@ export default function NomenMiniTable({
         {showTotals && rows.length > 0 && (
           <TableFooter>
             <TableRow>
-              <TableCell colSpan={onRemove ? 2 : 1}><strong>Ítems:</strong> {rows.length}</TableCell>
-              <TableCell align="right"><strong>Total U.B.:</strong> {totalUB}</TableCell>
+              <TableCell colSpan={onRemove ? 2 : 1}>
+                <strong>Ítems:</strong> {rows.length}
+              </TableCell>
+              <TableCell align="right">
+                <strong>Total U.B.:</strong> <strong>{totalUB}</strong>
+              </TableCell>
               {onRemove && <TableCell />}
             </TableRow>
           </TableFooter>

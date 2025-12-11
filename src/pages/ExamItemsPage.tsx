@@ -170,7 +170,9 @@ export default function ExamItemsPage() {
     <Box sx={{
       backgroundColor: 'rgba(255, 255, 255, 0.82)',
       backdropFilter: 'blur(4px)',
-      border: 'none', p: 2
+      border: 'none',
+      p: 2,
+      borderRadius: 3
     }}>
       <Typography variant="h5" fontWeight={700} sx={{ mb: 1 }}>ExamItems (definiciones por código)</Typography>
       {addErr && <Alert severity="error">{addErr}</Alert>}
@@ -202,8 +204,8 @@ export default function ExamItemsPage() {
                 placeholder="660042"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
-                    e.preventDefault(); 
-                    if (!loading) load(); 
+                    e.preventDefault();
+                    if (!loading) load();
                   }
                 }}
               />

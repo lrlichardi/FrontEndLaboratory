@@ -454,7 +454,9 @@ export default function PatientAnalysesPage() {
     <Box sx={{
       backgroundColor: 'rgba(255,255,255,0.7)',
       backdropFilter: 'blur(4px)',
-      border: 'none', p: 2
+      border: 'none',
+      p: 2,
+      borderRadius: 3
     }}>
       <Snackbar open={notice.open} autoHideDuration={3000} onClose={handleCloseNotice} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
         <Alert onClose={handleCloseNotice} severity="success" variant="filled" sx={{ width: '100%' }}>
