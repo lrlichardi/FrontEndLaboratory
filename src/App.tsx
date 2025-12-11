@@ -19,7 +19,7 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppNav />}>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<DashboardPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="patients" element={<PatientsPage />} />
         <Route path="patients/:patientId/analyses" element={<PatientAnalysesPage />} />

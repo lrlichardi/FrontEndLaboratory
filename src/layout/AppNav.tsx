@@ -5,7 +5,6 @@ import {
   ListItemIcon, ListItemText, Container, Divider
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
-import HomeIcon from '@mui/icons-material/Home';
 import PeopleIcon from '@mui/icons-material/People';
 import ScienceIcon from '@mui/icons-material/Science';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
@@ -14,13 +13,12 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import CalculateIcon from '@mui/icons-material/Calculate';
 
 const links = [
-  { to: '/', label: 'Inicio', icon: <HomeIcon />, exact: true },
+  { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon />, exact: true },
   { to: '/patients', label: 'Pacientes', icon: <PeopleIcon /> },
-  { to: '/nomenclador', label: 'Nomenclador', icon: <ScienceIcon /> },
-  { to: '/exam-items', label: 'ExamItems', icon: <ScienceIcon /> },
   { to: '/doctors', label: 'Doctores', icon: <MedicalServicesIcon /> },
   { to: '/social-works', label: 'Obras Sociales', icon: <HealthAndSafetyIcon /> },
-  { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+  { to: '/nomenclador', label: 'Nomenclador', icon: <ScienceIcon /> },
+  { to: '/exam-items', label: 'ExamItems', icon: <ScienceIcon /> },
   { to: '/price-calculator', label: 'Calculadora de precio', icon: <CalculateIcon /> },
 ];
 
@@ -35,7 +33,7 @@ export default function AppNav() {
             <MenuIcon />
           </IconButton>
 
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ flexGrow: 0.9 }}>
             Admin Pacientes – Maria Fatima Perez MP:1094
           </Typography>
 
