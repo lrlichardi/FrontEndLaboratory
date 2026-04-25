@@ -5,42 +5,38 @@ import PrintIcon from '@mui/icons-material/Print';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { getOrder, type TestOrder } from '../api/OrderApi';
 import { capitalize, toDDMMYYYY } from '../utils/utils';
+import firmaProfesional from '../image/firma.jpeg';
 // Helpers sexo/edad (ajustá la ruta si difiere)
 import { shouldApplySexAgeFilter, refTextBySexAndAge } from '../utils/refTextSexAge';
 // Agrupador de orina
 import { isUrineExamCode, groupUrineAnalytes, urinePrefixTitle } from '../utils/orinaCompleta';
-const fmtNum = (n: any) => {
+
+
+const fmtNum = (n: any, label?: string) => {
   if (n === null || n === undefined || n === '') return '';
 
-  // Normalizo el valor de entrada
-  const x =
-    typeof n === 'number'
+  const raw = String(n).trim();
+  const isDensidad = String(label ?? '').toLowerCase().includes('densidad');
+
+  const x = isDensidad
+    ? Number(raw.replace(',', '.'))
+    : typeof n === 'number'
       ? n
-      : Number(String(n).replace(/\./g, '').replace(',', '.'));
+      : Number(raw.replace(/\./g, '').replace(',', '.'));
 
-  if (!Number.isFinite(x)) return String(n);
+  if (!Number.isFinite(x)) return raw;
 
-  // 1) Números grandes: a partir de 100.000, con puntos y coma es-AR
-  if (x >= 100000) {
+  if (isDensidad) {
+    return x.toFixed(3).replace('.', ',');
+  }
+
+  if (x > 100000) {
     return new Intl.NumberFormat('es-AR', {
-      useGrouping: true,
       maximumFractionDigits: 4,
     }).format(x);
   }
 
-  // 2) Menores a 100.000
-  // 2.a) Enteros: sin separador de miles, sin decimales
-  if (Number.isInteger(x)) {
-    return x.toString();
-  }
-
-  // 2.b) Con decimales: sin separador de miles y con coma
-  return x
-    .toLocaleString('en-US', {
-      useGrouping: false,
-      maximumFractionDigits: 4,
-    })
-    .replace('.', ',');
+  return raw;
 };
 // columnas
 const COL_DET = '45%';
@@ -331,7 +327,7 @@ export default function ReportPage() {
                           )}
                       </Box>
                       <Box component="td" sx={{ p: '3px 4px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', width: '15%' }}>
-                        {typeof valueRaw === 'number' ? fmtNum(valueRaw) : valueRaw}
+                        {typeof valueRaw === 'number' ? fmtNum(valueRaw, analyte.itemDef.label) : valueRaw}
                       </Box>
                       <Box component="td" sx={{ p: '3px 4px', textAlign: 'center', color: '#666', fontSize: '12px', width: '10%' }}>
                         {unit}
@@ -538,7 +534,6 @@ export default function ReportPage() {
                           : (a.itemDef.refText || '—');
 
                         const refText = refRaw && refRaw !== '—' ? withUnit(refRaw, unit) : refRaw;
-
                         return (
                           <Box component="tr" key={a.id} sx={{ borderBottom: '1px solid #eee' }}>
                             <Box component="td" sx={{ p: '3px 4px', width: COL_DET }}>
@@ -560,7 +555,7 @@ export default function ReportPage() {
                                 width: COL_RES,
                               }}
                             >
-                              {typeof valueRaw === 'number' ? fmtNum(valueRaw) : valueRaw}
+                              {typeof valueRaw === 'number' ? fmtNum(valueRaw, a.itemDef.label) : valueRaw}
                             </Box>
                             <Box component="td"
                               sx={{
@@ -641,7 +636,7 @@ export default function ReportPage() {
                             <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
                               <Box component="td" sx={{ p: '5px' }}>{capitalize(analyte.itemDef.label)}</Box>
                               <Box component="td" sx={{ p: '5px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>
-                                {typeof valueRaw === 'number' ? fmtNum(valueRaw) : capitalize(valueRaw)}
+                                {typeof valueRaw === 'number' ? fmtNum(valueRaw, analyte.itemDef.label) : capitalize(valueRaw)}
                               </Box>
                               <Box component="td" sx={{ p: '5x', textAlign: 'center', color: '#666' }}>{unit || '—'}</Box>
                               <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '12px' }}>{capitalize(refText) || '—'}</Box>
@@ -785,9 +780,20 @@ export default function ReportPage() {
         )}
 
         {/* Firma */}
-        <Box sx={{ mt: 6, pt: 2, display: 'flex', justifyContent: 'space-around' }}>
-          <Box sx={{ textAlign: 'center', minWidth: '200px' }}>
-            <Box sx={{ borderTop: '1px solid #333', pt: '8px', fontSize: '12px', color: '#666' }}>
+        <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center' }}>
+          <Box sx={{ textAlign: 'center', minWidth: '220px' }}>
+            <Box
+              component="img"
+              src={firmaProfesional}
+              alt="Firma del Profesional"
+              sx={{
+                width: '180px',
+                height: 'auto',
+                mb: 0.5,
+              }}
+            />
+
+            <Box sx={{ fontSize: '12px', color: '#666' }}>
               Firma del Profesional
             </Box>
           </Box>

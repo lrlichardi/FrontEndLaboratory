@@ -87,17 +87,32 @@ export default function OrderDetailPage() {
     }
   };
 
-  const fmtNum = (n: any) => {
-    const x = typeof n === 'number'
+const fmtNum = (n: any, label?: string) => {
+  if (n === null || n === undefined || n === '') return '';
+
+  const raw = String(n).trim();
+  const isDensidad = String(label ?? '').toLowerCase().includes('densidad');
+
+  const x = isDensidad
+    ? Number(raw.replace(',', '.'))
+    : typeof n === 'number'
       ? n
-      : Number(String(n ?? '').replace(/\./g, '').replace(',', '.'));
+      : Number(raw.replace(/\./g, '').replace(',', '.'));
 
-    if (Number.isFinite(x) && x > 100000) {
-      return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 4 }).format(x);
-    }
+  if (!Number.isFinite(x)) return raw;
 
-    return String(n ?? '');
-  };
+  if (isDensidad) {
+    return x.toFixed(3).replace('.', ',');
+  }
+
+  if (x > 100000) {
+    return new Intl.NumberFormat('es-AR', {
+      maximumFractionDigits: 4,
+    }).format(x);
+  }
+
+  return raw;
+};
 
   useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
@@ -610,7 +625,8 @@ export default function OrderDetailPage() {
                                         const isEpiteliales = mode === 'EM' && (a.itemDef?.label.includes('CEL'));
                                         const isMucus = mode === 'EM' && (a.itemDef?.label.includes('MUCUS'));
                                         const raw = currentDraft ?? String(baseShown ?? '');
-                                        const numericPreview = kind === 'NUMERIC' ? fmtNum(raw) : '';
+                                        const numericPreview = kind === 'NUMERIC' ? fmtNum(raw , a.itemDef.label) : '';
+                                        console.log(numericPreview)
                                         const isEdited = !!drafts[a.id];
 
                                         const OPTIONS =
@@ -623,7 +639,7 @@ export default function OrderDetailPage() {
 
                                         const shownValue =
                                           (drafts[a.id]?.value as string) ?? a.valueText ?? defaultValue;
-
+                                        
                                         return (
                                           <TableRow key={a.id}>
                                             <TableCell>{capitalize(a.itemDef.label)}</TableCell>
