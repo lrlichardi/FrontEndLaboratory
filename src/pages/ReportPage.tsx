@@ -44,6 +44,8 @@ const COL_RES = '15%';
 const COL_UNIT = '10%';
 const COL_REF = '30%';
 
+const RESULT_ONLY_CODES = new Set(['660105']);
+const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
 
 
 function calculateAge(birthDate: Date | string): number {
@@ -271,6 +273,8 @@ export default function ReportPage() {
           // 🔹 separo otros en multi-analito y single-analito
           const multiItemsBase = otherItems.filter((i) => (i.analytes?.length || 0) > 1);
           const singleItems = otherItems.filter((i) => (i.analytes?.length || 0) === 1);
+          const singleItemsWithRef = singleItems.filter((i) => !isResultOnlyCode(i.examType.code));
+          const singleResultOnlyItems = singleItems.filter((i) => isResultOnlyCode(i.examType.code));
 
           // 🔹 ordenar multiItems: Hemograma primero, luego el resto alfabético
           const multiItems = [...multiItemsBase].sort((a, b) => {
@@ -298,6 +302,7 @@ export default function ReportPage() {
                 );
 
                 const isHemograma = (item.examType.name || '').toLowerCase().includes('hemograma');
+                const isResultOnlyExam = isResultOnlyCode(item.examType.code);
 
                 // función común para dibujar filas
                 const renderRow = (analyte: typeof item.analytes[0]) => {
@@ -326,15 +331,19 @@ export default function ReportPage() {
                             </Box>
                           )}
                       </Box>
-                      <Box component="td" sx={{ p: '3px 4px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', width: '15%' }}>
+                      <Box component="td" sx={{ p: '3px 4px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px', width: isResultOnlyExam ? '55%' : '15%' }}>
                         {typeof valueRaw === 'number' ? fmtNum(valueRaw, analyte.itemDef.label) : valueRaw}
                       </Box>
-                      <Box component="td" sx={{ p: '3px 4px', textAlign: 'center', color: '#666', fontSize: '12px', width: '10%' }}>
-                        {unit}
-                      </Box>
-                      <Box component="td" sx={{ p: '3px 4px', color: '#666', fontSize: '11px', width: '30%' }}>
-                        {refText || '—'}
-                      </Box>
+                      {!isResultOnlyExam && (
+                        <>
+                          <Box component="td" sx={{ p: '3px 4px', textAlign: 'center', color: '#666', fontSize: '12px', width: '10%' }}>
+                            {unit}
+                          </Box>
+                          <Box component="td" sx={{ p: '3px 4px', color: '#666', fontSize: '11px', width: '30%' }}>
+                            {refText || '—'}
+                          </Box>
+                        </>
+                      )}
                     </Box>
                   );
                 };
@@ -401,35 +410,39 @@ export default function ReportPage() {
                                       borderBottom: '2px solid #ddd',
                                       fontWeight: 'bold',
                                       fontSize: '11px',
-                                      width: '15%',
+                                      width: isResultOnlyExam ? '55%' : '15%',
                                     }}
                                   >
                                     Resultado
                                   </Box>
-                                  <Box component="th"
-                                    sx={{
-                                      p: '3px 4px',
-                                      textAlign: 'center',
-                                      borderBottom: '2px solid #ddd',
-                                      fontWeight: 'bold',
-                                      fontSize: '11px',
-                                      width: '10%',
-                                    }}
-                                  >
-                                    Unidad
-                                  </Box>
-                                  <Box component="th"
-                                    sx={{
-                                      p: '3px 4px',
-                                      textAlign: 'left',
-                                      borderBottom: '2px solid #ddd',
-                                      fontWeight: 'bold',
-                                      fontSize: '11px',
-                                      width: '30%',
-                                    }}
-                                  >
-                                    Val. de Referencia
-                                  </Box>
+                                  {!isResultOnlyExam && (
+                                    <>
+                                      <Box component="th"
+                                        sx={{
+                                          p: '3px 4px',
+                                          textAlign: 'center',
+                                          borderBottom: '2px solid #ddd',
+                                          fontWeight: 'bold',
+                                          fontSize: '11px',
+                                          width: '10%',
+                                        }}
+                                      >
+                                        Unidad
+                                      </Box>
+                                      <Box component="th"
+                                        sx={{
+                                          p: '3px 4px',
+                                          textAlign: 'left',
+                                          borderBottom: '2px solid #ddd',
+                                          fontWeight: 'bold',
+                                          fontSize: '11px',
+                                          width: '30%',
+                                        }}
+                                      >
+                                        Val. de Referencia
+                                      </Box>
+                                    </>
+                                  )}
                                 </Box>
                               </Box>
                               <Box component="tbody">
@@ -463,7 +476,7 @@ export default function ReportPage() {
 
 
               {/* === SINGLE-ITEMS: una sola tabla acumulada, SIN columna "Estudio" === */}
-              {singleItems.length > 0 && (
+              {singleItemsWithRef.length > 0 && (
                 <Box>
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
@@ -520,7 +533,7 @@ export default function ReportPage() {
                     </Box>
 
                     <Box component="tbody">
-                      {singleItems.map((item) => {
+                      {singleItemsWithRef.map((item) => {
                         const a = item.analytes[0];
                         const valueRaw = a.valueNum ?? a.valueText ?? '—';
                         const unit = a.unit || a.itemDef.unit || '-';
@@ -577,6 +590,75 @@ export default function ReportPage() {
                               }}
                             >
                               {capitalize(refText) || '—'}
+                            </Box>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+
+
+              {singleResultOnlyItems.length > 0 && (
+                <Box sx={{ mt: singleItemsWithRef.length > 0 ? 0.5 : 0 }}>
+                  <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
+                    <Box component="thead">
+                      <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
+                        <Box component="th"
+                          sx={{
+                            p: '3px 4px',
+                            textAlign: 'left',
+                            borderBottom: '2px solid #ddd',
+                            fontWeight: 'bold',
+                            fontSize: '11px',
+                            width: COL_DET,
+                          }}
+                        >
+                          Determinación
+                        </Box>
+                        <Box component="th"
+                          sx={{
+                            p: '3px 4px',
+                            textAlign: 'right',
+                            borderBottom: '2px solid #ddd',
+                            fontWeight: 'bold',
+                            fontSize: '11px',
+                            width: '55%',
+                          }}
+                        >
+                          Resultado
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    <Box component="tbody">
+                      {singleResultOnlyItems.map((item) => {
+                        const a = item.analytes[0];
+                        const valueRaw = a.valueNum ?? a.valueText ?? '—';
+
+                        return (
+                          <Box component="tr" key={a.id} sx={{ borderBottom: '1px solid #eee' }}>
+                            <Box component="td" sx={{ p: '3px 4px', width: COL_DET }}>
+                              <Box sx={{ fontSize: '12px' }}>{capitalize(a.itemDef.label)}</Box>
+                              {a?.itemDef?.method &&
+                                a.itemDef.method !== '-' &&
+                                a.itemDef.method !== 'N/A' && (
+                                  <Box sx={{ mt: 0.25, fontSize: '9px', color: '#666' }}>
+                                    Met. {a.itemDef.method}
+                                  </Box>
+                                )}
+                            </Box>
+                            <Box component="td"
+                              sx={{
+                                p: '3px 4px',
+                                textAlign: 'right',
+                                fontWeight: 'bold',
+                                fontSize: '12px',
+                                width: '55%',
+                              }}
+                            >
+                              {typeof valueRaw === 'number' ? fmtNum(valueRaw, a.itemDef.label) : valueRaw}
                             </Box>
                           </Box>
                         );

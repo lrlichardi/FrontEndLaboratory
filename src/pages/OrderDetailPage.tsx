@@ -18,6 +18,9 @@ import NomenMiniTable from '../components/NomenMiniTable';
 type DraftVal = { orderItemId: string; analyteId: string; kind: string; value: string | number };
 export type NomenOpt = { label: string; value: string; ub: number };
 
+const RESULT_ONLY_CODES = new Set(['660105']);
+const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
+
 export default function OrderDetailPage() {
   const { orderId = '' } = useParams();
   const [order, setOrder] = useState<TestOrder | null>(null);
@@ -87,32 +90,32 @@ export default function OrderDetailPage() {
     }
   };
 
-const fmtNum = (n: any, label?: string) => {
-  if (n === null || n === undefined || n === '') return '';
+  const fmtNum = (n: any, label?: string) => {
+    if (n === null || n === undefined || n === '') return '';
 
-  const raw = String(n).trim();
-  const isDensidad = String(label ?? '').toLowerCase().includes('densidad');
+    const raw = String(n).trim();
+    const isDensidad = String(label ?? '').toLowerCase().includes('densidad');
 
-  const x = isDensidad
-    ? Number(raw.replace(',', '.'))
-    : typeof n === 'number'
-      ? n
-      : Number(raw.replace(/\./g, '').replace(',', '.'));
+    const x = isDensidad
+      ? Number(raw.replace(',', '.'))
+      : typeof n === 'number'
+        ? n
+        : Number(raw.replace(/\./g, '').replace(',', '.'));
 
-  if (!Number.isFinite(x)) return raw;
+    if (!Number.isFinite(x)) return raw;
 
-  if (isDensidad) {
-    return x.toFixed(3).replace('.', ',');
-  }
+    if (isDensidad) {
+      return x.toFixed(3).replace('.', ',');
+    }
 
-  if (x > 100000) {
-    return new Intl.NumberFormat('es-AR', {
-      maximumFractionDigits: 4,
-    }).format(x);
-  }
+    if (x > 100000) {
+      return new Intl.NumberFormat('es-AR', {
+        maximumFractionDigits: 4,
+      }).format(x);
+    }
 
-  return raw;
-};
+    return raw;
+  };
 
   useEffect(() => { fetchOrder(); /* eslint-disable-next-line */ }, [orderId]);
 
@@ -267,52 +270,6 @@ const fmtNum = (n: any, label?: string) => {
         <Typography>No se encontró el análisis</Typography>
       </Box>
     );
-  }
-
-  const ABS_PAIRS = [
-    { pct: 'Neutrófilos segmentados', abs: 'Neutrófilos segmentados (abs)' },
-    { pct: 'Eosinófilos', abs: 'Eosinófilos (Abs)' },
-    { pct: 'Basófilos', abs: 'Basófilos (Abs)' },
-    { pct: 'Linfocitos', abs: 'Linfocitos (Abs)' },
-    { pct: 'Monocitos', abs: 'Monocitos (Abs)' },
-  ];
-
-  function recomputeAbsForItem(
-    item: { id: string; analytes: any[] },
-    nextDrafts: Record<string, { orderItemId: string; analyteId: string; kind: string; value: string | number }>
-  ) {
-    const byLabel = (label: string) => item.analytes.find((a: any) => a.itemDef?.label === label);
-    const leuc = byLabel('Leucocitos');
-
-    const getNum = (a: any) => {
-      const raw = nextDrafts[a.id]?.value ?? (a.valueNum ?? '');
-      const n = parseFloat(String(raw));
-      return Number.isFinite(n) ? n : NaN;
-    };
-
-    const leucVal = leuc ? getNum(leuc) : NaN;
-
-    for (const pair of ABS_PAIRS) {
-      const pctA = byLabel(pair.pct);
-      const absA = byLabel(pair.abs);
-      if (!pctA || !absA) continue;
-
-      const pctVal = getNum(pctA);
-
-      if (Number.isFinite(leucVal) && Number.isFinite(pctVal)) {
-        const absVal = Math.round(leucVal * pctVal / 100);
-        nextDrafts[absA.id] = {
-          orderItemId: item.id,
-          analyteId: absA.id,
-          kind: 'NUMERIC',
-          value: String(absVal),
-        };
-      } else {
-        if (nextDrafts[absA.id]) delete nextDrafts[absA.id];
-      }
-    }
-
-    return nextDrafts;
   }
 
   let __focusIdx = 0;
@@ -509,6 +466,7 @@ const fmtNum = (n: any, label?: string) => {
               order.items.map((item) => {
                 const hasMultipleItems = item.analytes.length > 1;
                 const open = !!expanded[item.id];
+                const resultOnly = isResultOnlyCode(item.examType.code);
 
                 if (!hasMultipleItems && item.analytes.length === 1) {
                   const a = item.analytes[0];
@@ -523,7 +481,7 @@ const fmtNum = (n: any, label?: string) => {
                       <TableCell width={48} />
                       <TableCell width={120}><code style={{ fontWeight: 600 }}>{item.examType.code}</code></TableCell>
                       <TableCell>{capitalize(a.itemDef.label)}</TableCell>
-                      <TableCell width={150}>
+                      <TableCell width={150} colSpan={resultOnly ? 3 : undefined}>
                         <TextField
                           size="small"
                           type={kind === 'NUMERIC' ? 'number' : 'text'}
@@ -542,8 +500,12 @@ const fmtNum = (n: any, label?: string) => {
                           sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
                         />
                       </TableCell>
-                      <TableCell width={100}><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
-                      <TableCell width={150}><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
+                      {!resultOnly && (
+                        <>
+                          <TableCell width={100}><Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography></TableCell>
+                          <TableCell width={150}><Typography variant="body2">{a.itemDef.refText || '—'}</Typography></TableCell>
+                        </>
+                      )}
                       <TableCell width={100} align="center">
                         <IconButton size="small" color="error" onClick={() => handleDelete(item.id)}>
                           <DeleteIcon fontSize="small" />
@@ -590,9 +552,13 @@ const fmtNum = (n: any, label?: string) => {
                               <TableHead>
                                 <TableRow>
                                   <TableCell><strong>Ítem</strong></TableCell>
-                                  <TableCell width={250}><strong>Resultado</strong></TableCell>
-                                  <TableCell width={100}><strong>Unidad</strong></TableCell>
-                                  <TableCell width={160}><strong>Rango Ref.</strong></TableCell>
+                                  <TableCell width={250} colSpan={resultOnly ? 3 : undefined}><strong>Resultado</strong></TableCell>
+                                  {!resultOnly && (
+                                    <>
+                                      <TableCell width={100}><strong>Unidad</strong></TableCell>
+                                      <TableCell width={160}><strong>Rango Ref.</strong></TableCell>
+                                    </>
+                                  )}
                                   <TableCell width={120} align="center"><strong>Estado</strong></TableCell>
                                 </TableRow>
                               </TableHead>
@@ -621,11 +587,11 @@ const fmtNum = (n: any, label?: string) => {
                                         const EQ_OPTIONS = ['No contiene', 'Contiene', 'Contiene +', 'Contiene ++', 'Contiene +++', 'Contiene ++++', 'Normal'] as const;
                                         const EM_EPI_OPTIONS = ['Escasas', 'Regulares', 'Abundantes'] as const;
                                         const EM_MUC_OPTIONS = ['Escaso', 'Regular', 'Abundante'] as const;
-                                        const isEspuma = mode === 'EF' && (a.itemDef?.label.includes('Espuma'))
+                                        // const isEspuma = mode === 'EF' && (a.itemDef?.label.includes('Espuma'))
                                         const isEpiteliales = mode === 'EM' && (a.itemDef?.label.includes('CEL'));
                                         const isMucus = mode === 'EM' && (a.itemDef?.label.includes('MUCUS'));
                                         const raw = currentDraft ?? String(baseShown ?? '');
-                                        const numericPreview = kind === 'NUMERIC' ? fmtNum(raw , a.itemDef.label) : '';
+                                        const numericPreview = kind === 'NUMERIC' ? fmtNum(raw, a.itemDef.label) : '';
                                         console.log(numericPreview)
                                         const isEdited = !!drafts[a.id];
 
@@ -639,12 +605,12 @@ const fmtNum = (n: any, label?: string) => {
 
                                         const shownValue =
                                           (drafts[a.id]?.value as string) ?? a.valueText ?? defaultValue;
-                                        
+
                                         return (
                                           <TableRow key={a.id}>
                                             <TableCell>{capitalize(a.itemDef.label)}</TableCell>
 
-                                            <TableCell width={160}>
+                                            <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
                                               {mode === 'EQ' || (isEpiteliales || isMucus) ? (
                                                 <TextField
                                                   select
@@ -704,12 +670,16 @@ const fmtNum = (n: any, label?: string) => {
                                               )}
                                             </TableCell>
 
-                                            <TableCell width={100}>
-                                              <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
-                                            </TableCell>
-                                            <TableCell width={160}>
-                                              <Typography variant="body2">{capitalize(a.itemDef.refText) || '—'}</Typography>
-                                            </TableCell>
+                                            {!resultOnly && (
+                                              <>
+                                                <TableCell width={100}>
+                                                  <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                                                </TableCell>
+                                                <TableCell width={160}>
+                                                  <Typography variant="body2">{capitalize(a.itemDef.refText) || '—'}</Typography>
+                                                </TableCell>
+                                              </>
+                                            )}
                                             <TableCell width={120} align="center">
                                               <Chip
                                                 size="small"
@@ -756,7 +726,7 @@ const fmtNum = (n: any, label?: string) => {
                                       return (
                                         <TableRow key={a.id}>
                                           <TableCell>{capitalize(a.itemDef.label)}</TableCell>
-                                          <TableCell width={160}>
+                                          <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
                                             <TextField
                                               size="small"
                                               type={kind === 'NUMERIC' ? 'number' : 'text'}
@@ -782,7 +752,7 @@ const fmtNum = (n: any, label?: string) => {
                                                       value: v,
                                                     },
                                                   };
-                                                  return recomputeAbsForItem(item, next);
+                                                  return next;
                                                 });
                                               }}
                                               placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
@@ -790,12 +760,16 @@ const fmtNum = (n: any, label?: string) => {
                                               sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
                                             />
                                           </TableCell>
-                                          <TableCell width={100}>
-                                            <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
-                                          </TableCell>
-                                          <TableCell width={160}>
-                                            <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
-                                          </TableCell>
+                                          {!resultOnly && (
+                                            <>
+                                              <TableCell width={100}>
+                                                <Typography variant="body2">{a.unit || a.itemDef.unit || '—'}</Typography>
+                                              </TableCell>
+                                              <TableCell width={160}>
+                                                <Typography variant="body2">{a.itemDef.refText || '—'}</Typography>
+                                              </TableCell>
+                                            </>
+                                          )}
                                           <TableCell width={120} align="center">
                                             <Chip
                                               size="small"
