@@ -2,10 +2,10 @@ FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY . .
-RUN npm run build   # Vite -> /app/dist
+RUN npx tsc && npx vite build
 
 FROM nginx:alpine
 
