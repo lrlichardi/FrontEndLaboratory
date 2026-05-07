@@ -46,7 +46,9 @@ const COL_REF = '30%';
 
 const RESULT_ONLY_CODES = new Set(['660105']);
 const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
-
+const CULTIVO_CODE = '660105';
+const isCultivoCode = (code?: string | number | null) =>
+  String(code ?? '') === CULTIVO_CODE;
 
 function calculateAge(birthDate: Date | string): number {
   const today = new Date();
@@ -636,11 +638,23 @@ export default function ReportPage() {
                       {singleResultOnlyItems.map((item) => {
                         const a = item.analytes[0];
                         const valueRaw = a.valueNum ?? a.valueText ?? '—';
+                        const isCultivo = isCultivoCode(item.examType.code);
 
                         return (
-                          <Box component="tr" key={a.id} sx={{ borderBottom: '1px solid #eee' }}>
-                            <Box component="td" sx={{ p: '3px 4px', width: COL_DET }}>
-                              <Box sx={{ fontSize: '12px' }}>{capitalize(a.itemDef.label)}</Box>
+                          <Box component="tr" key={a.id} sx={{
+                            borderBottom: '1px solid #eee',
+                            backgroundColor: 'transparent',
+                            color: 'inherit',
+                          }}>
+                            <Box component="td" sx={{ p: '3px 4px', width: COL_DET, color: 'inherit' }}>
+                              <Box
+                                sx={{
+                                  fontSize: '12px',
+                                  fontWeight: isCultivo ? 'bold' : 'normal',
+                                }}
+                              >
+                                {capitalize(a.itemDef.label)}
+                              </Box>
                               {a?.itemDef?.method &&
                                 a.itemDef.method !== '-' &&
                                 a.itemDef.method !== 'N/A' && (

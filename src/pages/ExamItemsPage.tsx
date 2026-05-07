@@ -77,11 +77,21 @@ export default function ExamItemsPage() {
           }}>
             <EditIcon fontSize="small" />
           </IconButton>
-          <IconButton size="small" color="error" onClick={async () => {
-            if (!window.confirm('¿Eliminar ítem?')) return;
-            await deleteExamItemDef(p.row.id);
-            load();
-          }}>
+          <IconButton
+            size="small"
+            color="error"
+            onClick={async () => {
+              if (!window.confirm('¿Eliminar ítem?')) return;
+
+              try {
+                setErr(null);
+                await deleteExamItemDef(p.row.id);
+                await load();
+              } catch (e: any) {
+                setErr(e.message || 'Error al eliminar el ítem');
+              }
+            }}
+          >
             <DeleteIcon fontSize="small" />
           </IconButton>
         </Stack>
