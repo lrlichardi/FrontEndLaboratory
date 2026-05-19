@@ -583,7 +583,10 @@ export default function OrderDetailPage() {
                                         const idx = nextIdx();
                                         const currentDraft = drafts[a.id]?.value;
 
-                                        const isUro = (a.itemDef?.label || '').toLowerCase() === 'urobilina';
+                                        const labelLc = (a.itemDef?.label || '').trim().toLowerCase();
+                                        const isUro = labelLc === 'urobilina';
+                                        const isAspecto = mode === 'EF' && labelLc === 'aspecto';
+                                        const EF_ASPECTO_OPTIONS = ['Limpido', 'Lig. Turbio', 'Turbio'] as const;
                                         const EQ_OPTIONS = ['No contiene', 'Contiene', 'Contiene +', 'Contiene ++', 'Contiene +++', 'Contiene ++++', 'Normal'] as const;
                                         const EM_EPI_OPTIONS = ['Escasas', 'Regulares', 'Abundantes'] as const;
                                         const EM_MUC_OPTIONS = ['Escaso', 'Regular', 'Abundante'] as const;
@@ -592,16 +595,17 @@ export default function OrderDetailPage() {
                                         const isMucus = mode === 'EM' && (a.itemDef?.label.includes('MUCUS'));
                                         const raw = currentDraft ?? String(baseShown ?? '');
                                         const numericPreview = kind === 'NUMERIC' ? fmtNum(raw, a.itemDef.label) : '';
-                                        console.log(numericPreview)
                                         const isEdited = !!drafts[a.id];
 
                                         const OPTIONS =
-                                          mode === 'EQ' ? EQ_OPTIONS
-                                            : (isEpiteliales ? EM_EPI_OPTIONS : isMucus ? EM_MUC_OPTIONS : []);
+                                          isAspecto ? EF_ASPECTO_OPTIONS
+                                            : mode === 'EQ' ? EQ_OPTIONS
+                                              : (isEpiteliales ? EM_EPI_OPTIONS : isMucus ? EM_MUC_OPTIONS : []);
 
                                         const defaultValue =
-                                          mode === 'EQ' ? (isUro ? 'Normal' : 'No contiene')
-                                            : ''
+                                          isAspecto ? 'Limpido'
+                                            : mode === 'EQ' ? (isUro ? 'Normal' : 'No contiene')
+                                              : ''
 
                                         const shownValue =
                                           (drafts[a.id]?.value as string) ?? a.valueText ?? defaultValue;
@@ -611,7 +615,7 @@ export default function OrderDetailPage() {
                                             <TableCell>{capitalize(a.itemDef.label)}</TableCell>
 
                                             <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
-                                              {mode === 'EQ' || (isEpiteliales || isMucus) ? (
+                                              {isAspecto || mode === 'EQ' || isEpiteliales || isMucus ? (
                                                 <TextField
                                                   select
                                                   size="small"

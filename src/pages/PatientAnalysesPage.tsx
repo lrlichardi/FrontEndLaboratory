@@ -283,7 +283,6 @@ export default function PatientAnalysesPage() {
     const filtered = isNum
       ? pool.filter(r => String(r.codigo).startsWith(b))
       : pool.filter(r => r.determinacion.toLowerCase().includes(s));
-    console.log({ filtered });
     return filtered.slice(0, 20).map(r => ({
       value: String(r.codigo),
       label: `${r.codigo} — ${r.determinacion} (${r.ub} U.B.),`,
