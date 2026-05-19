@@ -38,11 +38,91 @@ const fmtNum = (n: any, label?: string) => {
 
   return raw;
 };
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const formatReferenceLines = (text?: string | null, unit?: string | null) => {
+  const rawText = String(text ?? '').trim();
+  if (!rawText || rawText === '—') return ['—'];
+
+  const cleanUnit = String(unit ?? '').trim();
+
+  const normalizeDecimalSpaces = (value: string) =>
+    value.replace(/(\d)\s*([.,])\s*(\d)/g, '$1$2$3');
+
+  const lineAlreadyHasUnit = (line: string) => {
+    if (!cleanUnit) return false;
+    return new RegExp(`${escapeRegExp(cleanUnit)}\\s*$`, 'i').test(line.trim());
+  };
+
+  const shouldAppendUnit = (line: string) => {
+    if (!cleanUnit || lineAlreadyHasUnit(line)) return false;
+
+    // Agrega la unidad a líneas de referencia numérica, por ejemplo:
+    // 40-49 anos < 2.0  => 40-49 anos < 2.0 ng/ml
+    return /(?:<=|>=|<|>|≤|≥)\s*[\d.,]+\s*$/i.test(line.trim());
+  };
+
+  const addUnitIfNeeded = (line: string) => {
+    const normalized = normalizeDecimalSpaces(line.replace(/\s+/g, ' ').trim());
+    return shouldAppendUnit(normalized) ? `${normalized} ${cleanUnit}` : normalized;
+  };
+
+  // Si ya viene con saltos o separado por punto y coma, respetamos ese formato
+  // y repetimos la unidad en cada línea que corresponda.
+  const explicitLines = rawText
+    .replace(/<br\s*\/?\>/gi, '\n')
+    .split(/\n|;/)
+    .map(addUnitIfNeeded)
+    .filter(Boolean);
+
+  if (explicitLines.length > 1) return explicitLines;
+
+  let clean = rawText.replace(/\s+/g, ' ').trim();
+
+  // Si el texto terminó con la unidad agregada una sola vez, la sacamos para poder repetirla por línea.
+  if (cleanUnit) {
+    const unitAtEnd = new RegExp(`\\s*${escapeRegExp(cleanUnit)}\\s*$`, 'i');
+    clean = clean.replace(unitAtEnd, '').trim();
+  }
+
+  // Ejemplo que puede venir desde la BD en una sola línea:
+  // 40-49 anos < 2.0 50-59 anos < 3.1 60-69 anos < 4.1 70-79 anos < 6.5 ng/ml
+  const ageRanges = clean.match(/\d{1,3}\s*-\s*\d{1,3}\s*a[nñ]os\s*(?:<=|>=|<|>|≤|≥)\s*[\d.,]+/gi);
+
+  if (ageRanges && ageRanges.length > 0) {
+    return ageRanges.map(addUnitIfNeeded);
+  }
+
+  return [addUnitIfNeeded(rawText)];
+};
+
+const renderReferenceText = (text?: string | null, unit?: string | null) => {
+  const lines = formatReferenceLines(text, unit);
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.15,
+        lineHeight: 1.25,
+        whiteSpace: 'normal',
+      }}
+    >
+      {lines.map((line, idx) => (
+        <Box key={idx} component="span">
+          {line}
+        </Box>
+      ))}
+    </Box>
+  );
+};
 // columnas
-const COL_DET = '45%';
+const COL_DET = '40%';
 const COL_RES = '15%';
 const COL_UNIT = '10%';
-const COL_REF = '30%';
+const COL_REF = '35%';
 
 const RESULT_ONLY_CODES = new Set(['660105']);
 const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
@@ -341,8 +421,8 @@ export default function ReportPage() {
                           <Box component="td" sx={{ p: '3px 4px', textAlign: 'center', color: '#666', fontSize: '12px', width: '10%' }}>
                             {unit}
                           </Box>
-                          <Box component="td" sx={{ p: '3px 4px', color: '#666', fontSize: '11px', width: '30%' }}>
-                            {refText || '—'}
+                          <Box component="td" sx={{ p: '3px 4px', color: '#666', fontSize: '11px', width: '30%', verticalAlign: 'top' }}>
+                            {renderReferenceText(refText, unit)}
                           </Box>
                         </>
                       )}
@@ -589,9 +669,10 @@ export default function ReportPage() {
                                 color: '#666',
                                 fontSize: '12px',
                                 width: COL_REF,
+                                verticalAlign: 'top',
                               }}
                             >
-                              {capitalize(refText) || '—'}
+                              {renderReferenceText(refText, unit)}
                             </Box>
                           </Box>
                         );
@@ -734,8 +815,8 @@ export default function ReportPage() {
                               <Box component="td" sx={{ p: '5px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>
                                 {typeof valueRaw === 'number' ? fmtNum(valueRaw, analyte.itemDef.label) : capitalize(valueRaw)}
                               </Box>
-                              <Box component="td" sx={{ p: '5x', textAlign: 'center', color: '#666' }}>{unit || '—'}</Box>
-                              <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '12px' }}>{capitalize(refText) || '—'}</Box>
+                              <Box component="td" sx={{ p: '5px', textAlign: 'center', color: '#666' }}>{unit || '—'}</Box>
+                              <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '12px', verticalAlign: 'top' }}>{renderReferenceText(refText, unit)}</Box>
                             </Box>
                           );
                         })}
