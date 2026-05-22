@@ -219,6 +219,16 @@ export default function ReportPage() {
     return u ? `${t} ${u}` : t;
   };
 
+  const formatAnalyteLabel = (label?: string | null, isAcronym?: boolean) => {
+    const raw = String(label ?? '').trim();
+
+    if (isAcronym) {
+      return raw.toUpperCase();
+    }
+
+    return capitalize(raw);
+  };
+
   return (
     <>
       {/* Botones de acción - Solo visible en pantalla */}
@@ -404,7 +414,7 @@ export default function ReportPage() {
                   return (
                     <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
                       <Box component="td" sx={{ p: '3px 4px', width: '45%' }}>
-                        <Box>{capitalize(analyte.itemDef.label)}</Box>
+                        <Box>{formatAnalyteLabel(analyte.itemDef.label, analyte.itemDef.isAcronym)}</Box>
                         {analyte?.itemDef?.method &&
                           analyte.itemDef.method !== '-' &&
                           analyte.itemDef.method !== 'N/A' && (
@@ -632,7 +642,7 @@ export default function ReportPage() {
                         return (
                           <Box component="tr" key={a.id} sx={{ borderBottom: '1px solid #eee' }}>
                             <Box component="td" sx={{ p: '3px 4px', width: COL_DET }}>
-                              <Box sx={{ fontSize: '12px' }}>{capitalize(a.itemDef.label)}</Box>
+                              <Box sx={{ fontSize: '12px' }}>{formatAnalyteLabel(a.itemDef.label, a.itemDef.isAcronym)}</Box>
                               {a?.itemDef?.method &&
                                 a.itemDef.method !== '-' &&
                                 a.itemDef.method !== 'N/A' && (

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Box, Button, Dialog, DialogActions, DialogContent, DialogTitle,
-  Grid, IconButton, MenuItem, Stack, TextField, Typography, Autocomplete
+  Grid, IconButton, MenuItem, Stack, TextField, Typography, Autocomplete,
+  Checkbox, FormControlLabel
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import AddIcon from '@mui/icons-material/Add';
@@ -30,7 +31,16 @@ export default function ExamItemsPage() {
 
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ExamItemDef | null>(null);
-  const [form, setForm] = useState({ key: '', label: '', unit: '', kind: 'NUMERIC', method: 'Enzimático', sortOrder: 0, refText: '' });
+  const [form, setForm] = useState({
+    key: '',
+    label: '',
+    unit: '',
+    kind: 'NUMERIC',
+    method: 'Enzimático',
+    sortOrder: 0,
+    refText: '',
+    isAcronym: false,
+  });
   const [allNomen, setAllNomen] = useState<any[] | null>(null);
   const [opts, setOpts] = useState<NomenOpt[]>([]);
   const [addErr, setAddErr] = useState<string | null>(null);
@@ -69,9 +79,14 @@ export default function ExamItemsPage() {
           <IconButton size="small" onClick={() => {
             setEditing(p.row as ExamItemDef);
             setForm({
-              key: p.row.key, label: p.row.label, unit: p.row.unit || '',
-              kind: p.row.kind || 'NUMERIC', method: p.row.method || 'Enzimático', sortOrder: p.row.sortOrder ?? 0,
-              refText: p.row.refText || ''
+              key: p.row.key,
+              label: p.row.label,
+              unit: p.row.unit || '',
+              kind: p.row.kind || 'NUMERIC',
+              method: p.row.method || 'Enzimático',
+              sortOrder: p.row.sortOrder ?? 0,
+              refText: p.row.refText || '',
+              isAcronym: Boolean(p.row.isAcronym),
             });
             setOpen(true);
           }}>
@@ -101,7 +116,7 @@ export default function ExamItemsPage() {
 
   const onOpenNew = () => {
     setEditing(null);
-    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', method: 'Enzimático', sortOrder: rows.length, refText: '' });
+    setForm({ key: '', label: '', unit: '', kind: 'NUMERIC', method: 'Enzimático', sortOrder: rows.length, refText: '', isAcronym: false });
     setOpen(true);
   };
 
@@ -156,7 +171,8 @@ export default function ExamItemsPage() {
           sortOrder: Number(form.sortOrder) || 0,
           refText: form.refText?.trim() || null,
           method: form.method?.trim() || '',
-        });
+          isAcronym: form.isAcronym,
+        } as any);
       } else {
         await createExamItemDef({
           code: code.trim(),
@@ -167,7 +183,8 @@ export default function ExamItemsPage() {
           sortOrder: Number(form.sortOrder) || 0,
           refText: form.refText?.trim() || null,
           method: form.method?.trim(),
-        });
+          isAcronym: form.isAcronym,
+        } as any);
       }
       setOpen(false);
       load();
@@ -299,9 +316,20 @@ export default function ExamItemsPage() {
                 onChange={e => setForm({ ...form, method: e.target.value })}
               >
                 {method.map(k => <MenuItem key={k} value={k}>{k}</MenuItem>)}
-
               </TextField>
-
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={form.isAcronym}
+                    onChange={(e) =>
+                      setForm({ ...form, isAcronym: e.target.checked })
+                    }
+                  />
+                }
+                label="Es sigla"
+              />
             </Grid>
           </Grid>
         </DialogContent>

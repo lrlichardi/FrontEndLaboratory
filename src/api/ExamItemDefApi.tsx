@@ -1,5 +1,5 @@
 const BASE_URL = import.meta.env.VITE_API_URL
-import {type ExamType} from './OrderApi'
+import { type ExamType } from './OrderApi'
 
 export type ExamItemDef = {
   id: string;
@@ -10,6 +10,7 @@ export type ExamItemDef = {
   sortOrder: number;
   refText?: string | null;
   method?: string | null;
+  isAcronym: boolean;
 };
 
 export async function createExamItemDef(input: {
