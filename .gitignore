@@ -1,6 +1,8 @@
 node_modules/
-dist
-build
+dist/
+build/
 .git
 .env
+.env.*
+!.env.example
 yarn.lock
