@@ -2,8 +2,5 @@ node_modules
 dist
 build
 .git
-.gitignore
-npm-debug.log*
-.DS_Store
 .env
-.env.*
+yarn.lock
