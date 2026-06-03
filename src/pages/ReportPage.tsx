@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Button, CircularProgress, Alert } from '@mui/material';
 import PrintIcon from '@mui/icons-material/Print';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { useReactToPrint } from 'react-to-print';
 import { getOrder, type TestOrder } from '../api/OrderApi';
 import { capitalize, toDDMMYYYY } from '../utils/utils';
 import firmaProfesional from '../image/firma.jpeg';
@@ -146,6 +147,7 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
+  const reportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -172,14 +174,140 @@ export default function ReportPage() {
     return `${sanitize(last)}_${sanitize(first)}_${date}.pdf`;
   };
 
-  const handlePrint = () => {
-    if (!order) return;
-    const prevTitle = document.title;
-    document.title = buildPdfName(order);
-    window.print();
-    // restaurar el título luego de que se abre el diálogo de impresión
-    setTimeout(() => { document.title = prevTitle; }, 2000);
-  };
+  const handlePrint = useReactToPrint({
+    contentRef: reportRef,
+    documentTitle: order ? buildPdfName(order).replace(/\.pdf$/i, '') : 'Informe',
+    pageStyle: `
+      @page {
+        size: A4;
+        margin: 8mm 8mm 24mm 8mm;
+      }
+
+      @media print {
+        html,
+        body,
+        #root {
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+
+        .MuiAppBar-root,
+        .no-print {
+          display: none !important;
+        }
+
+        #report-root {
+          width: 100% !important;
+          max-width: none !important;
+          min-height: auto !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: #ffffff !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+        }
+
+        .regular-signature,
+        .regular-footer {
+          display: none !important;
+        }
+
+        .print-fixed-signature {
+          display: flex !important;
+          position: fixed !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 3mm !important;
+          height: 14mm !important;
+          justify-content: center !important;
+          align-items: flex-end !important;
+          z-index: 9999 !important;
+          pointer-events: none !important;
+        }
+
+        .print-signature-inner {
+          width: 100% !important;
+          text-align: center !important;
+          line-height: 1.05 !important;
+        }
+
+        .print-signature-img {
+          width: 34px !important;
+          height: auto !important;
+          display: block !important;
+          margin: 0 auto 0.2mm auto !important;
+        }
+
+        .print-signature-label {
+          font-size: 5px !important;
+          color: #555 !important;
+        }
+
+        .print-signature-note {
+          margin-top: 0.2mm !important;
+          font-size: 4.2px !important;
+          color: #888 !important;
+        }
+
+        .exam-block {
+          break-inside: avoid-page !important;
+          page-break-inside: avoid !important;
+          margin-bottom: 2mm !important;
+        }
+
+        .single-items-block,
+        .urine-block {
+          break-inside: auto !important;
+          page-break-inside: auto !important;
+        }
+
+        .exam-title,
+        .section-title {
+          break-after: avoid-page !important;
+          page-break-after: avoid !important;
+        }
+
+        .urine-section,
+        .result-only-block {
+          break-inside: avoid-page !important;
+          page-break-inside: avoid !important;
+        }
+
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+
+        thead {
+          display: table-header-group !important;
+        }
+
+        tbody {
+          display: table-row-group !important;
+        }
+
+        tr {
+          break-inside: avoid-page !important;
+          page-break-inside: avoid !important;
+        }
+
+        td,
+        th {
+          overflow-wrap: anywhere !important;
+        }
+
+        #report-root img {
+          break-inside: avoid-page !important;
+          page-break-inside: avoid !important;
+        }
+      }
+    `,
+  });
 
   const handleBack = () => {
     if (location.state?.from) {
@@ -250,6 +378,7 @@ export default function ReportPage() {
 
       {/* Contenido del informe */}
       <Box id="report-root"
+        ref={reportRef}
         sx={{
           maxWidth: '210mm', // Ancho A4
           margin: '0 auto',
@@ -448,8 +577,8 @@ export default function ReportPage() {
                 }
 
                 return (
-                  <Box key={item.id}>
-                    <Box sx={{
+                  <Box key={item.id} className="exam-block">
+                    <Box className="exam-title" sx={{
                       backgroundColor: '#e3f2fd',
                       p: '8px',
                       borderRadius: '4px',
@@ -569,7 +698,7 @@ export default function ReportPage() {
 
               {/* === SINGLE-ITEMS: una sola tabla acumulada, SIN columna "Estudio" === */}
               {singleItemsWithRef.length > 0 && (
-                <Box>
+                <Box className="exam-block single-items-block">
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
                       <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
@@ -694,7 +823,7 @@ export default function ReportPage() {
 
 
               {singleResultOnlyItems.length > 0 && (
-                <Box sx={{ mt: singleItemsWithRef.length > 0 ? 0.5 : 0 }}>
+                <Box className="exam-block result-only-block" sx={{ mt: singleItemsWithRef.length > 0 ? 0.5 : 0 }}>
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
                       <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
@@ -774,19 +903,14 @@ export default function ReportPage() {
               )}
 
               {/* ORINA ANALISIS  */}
-              {urineItems.map((item, index) => (
-                <Box key={item.id} >
-                  <Box sx={{
+              {urineItems.map((item) => (
+                <Box key={item.id} className="exam-block urine-block">
+                  <Box className="exam-title" sx={{
                     backgroundColor: '#e3f2fd',
                     p: '11px',
                     borderRadius: '4px',
                     mb: 0.5,
                     borderLeft: '4px solid #1976d2',
-                    pageBreakBefore: index === 0 ? 'always' : 'auto',
-                    breakBefore: index === 0 ? 'page' : 'auto',
-                    pageBreakInside: 'avoid',
-                    breakInside: 'avoid',
-
                   }}>
                     <Box sx={{ fontSize: '15px', fontWeight: 'bold', color: '#1976d2' }}>
                       {capitalize(item.examType.name)}
@@ -845,8 +969,8 @@ export default function ReportPage() {
                       const colSets = [rows.slice(0, mid), rows.slice(mid)];
 
                       return (
-                        <Box sx={{ mb: 1 }}>
-                          <Box sx={{
+                        <Box className="urine-section" sx={{ mb: 1 }}>
+                          <Box className="section-title" sx={{
                             backgroundColor: '#f1f8ff',
                             borderLeft: '4px solid #1976d2',
                             px: 1.5,
@@ -966,15 +1090,15 @@ export default function ReportPage() {
           </Box>
         )}
 
-        {/* Firma */}
-        <Box sx={{ mt: 4, pt: 2, display: 'flex', justifyContent: 'center' }}>
+        {/* Firma visible en pantalla */}
+        <Box className="regular-signature" sx={{ mt: 3, pt: 1, display: 'flex', justifyContent: 'center' }}>
           <Box sx={{ textAlign: 'center', minWidth: '220px' }}>
             <Box
               component="img"
               src={firmaProfesional}
               alt="Firma del Profesional"
               sx={{
-                width: '180px',
+                width: '120px',
                 height: 'auto',
                 mb: 0.5,
               }}
@@ -986,21 +1110,40 @@ export default function ReportPage() {
           </Box>
         </Box>
 
-        {/* Footer */}
-        <Box sx={{ mt: 4, pt: 2, borderTop: '1px solid #e0e0e0', textAlign: 'center', fontSize: '11px', color: '#999' }}>
+        {/* Footer visible en pantalla */}
+        <Box className="regular-footer" sx={{ mt: 3, pt: 1.5, borderTop: '1px solid #e0e0e0', textAlign: 'center', fontSize: '10px', color: '#999' }}>
           Este informe es válido únicamente con firma y sello del profesional responsable
+        </Box>
+
+        {/* Firma fija para impresión: se repite en todas las hojas */}
+        <Box className="print-fixed-signature">
+          <Box className="print-signature-inner">
+            <Box
+              component="img"
+              src={firmaProfesional}
+              alt="Firma del Profesional"
+              className="print-signature-img"
+            />
+            <Box className="print-signature-label">Firma del Profesional</Box>
+            <Box className="print-signature-note">
+              Este informe es válido únicamente con firma y sello del profesional responsable
+            </Box>
+          </Box>
         </Box>
       </Box>
 
       {/* Estilos de impresión */}
       <style>{`
+  .print-fixed-signature {
+    display: none;
+  }
+
   @media print {
     @page {
       size: A4;
-      margin: 0;
+      margin: 8mm 8mm 24mm 8mm;
     }
 
-    /* Fondo blanco, sin imagen al imprimir */
     html,
     body,
     #root {
@@ -1008,29 +1151,62 @@ export default function ReportPage() {
       padding: 0 !important;
       background: #ffffff !important;
       background-image: none !important;
-    }
-
-    body * {
-      visibility: hidden !important;
-    }
-
-    #report-root,
-    #report-root * {
-      visibility: visible !important;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }
 
     #report-root {
       position: static !important;
-      left: 0;
-      top: 0;
-      width: auto !important;
-      max-width: 200mm !important;
-      margin: 0 auto !important;
-      padding: 2mm 3mm 2mm 3mm !important;
+      width: 100% !important;
+      max-width: none !important;
       min-height: auto !important;
+      margin: 0 !important;
+      padding: 0 !important;
       background: #ffffff !important;
       box-shadow: none !important;
       border-radius: 0 !important;
+    }
+
+    .regular-signature,
+    .regular-footer {
+      display: none !important;
+    }
+
+    .print-fixed-signature {
+      display: flex !important;
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 3mm !important;
+      height: 14mm !important;
+      justify-content: center !important;
+      align-items: flex-end !important;
+      z-index: 9999 !important;
+      pointer-events: none !important;
+    }
+
+    .print-signature-inner {
+      width: 100% !important;
+      text-align: center !important;
+      line-height: 1.05 !important;
+    }
+
+    .print-signature-img {
+      width: 100px !important;
+      height: auto !important;
+      display: block !important;
+      margin: 0 auto 0.2mm auto !important;
+    }
+
+    .print-signature-label {
+      font-size: 5px !important;
+      color: #555 !important;
+    }
+
+    .print-signature-note {
+      margin-top: 0.2mm !important;
+      font-size: 4.2px !important;
+      color: #888 !important;
     }
 
     .MuiAppBar-root,
@@ -1038,12 +1214,58 @@ export default function ReportPage() {
       display: none !important;
     }
 
-    .patient-info,
-    table thead,
-    table tbody tr,
-    #report-root > div > div {
-      page-break-inside: avoid;
-      break-inside: avoid;
+    .exam-block {
+      break-inside: avoid-page !important;
+      page-break-inside: avoid !important;
+      margin-bottom: 2mm !important;
+    }
+
+    .single-items-block,
+    .urine-block {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+
+    .exam-title,
+    .section-title {
+      break-after: avoid-page !important;
+      page-break-after: avoid !important;
+    }
+
+    .urine-section,
+    .result-only-block {
+      break-inside: avoid-page !important;
+      page-break-inside: avoid !important;
+    }
+
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      page-break-inside: auto !important;
+      break-inside: auto !important;
+    }
+
+    thead {
+      display: table-header-group !important;
+    }
+
+    tbody {
+      display: table-row-group !important;
+    }
+
+    tr {
+      break-inside: avoid-page !important;
+      page-break-inside: avoid !important;
+    }
+
+    td,
+    th {
+      overflow-wrap: anywhere !important;
+    }
+
+    #report-root img {
+      break-inside: avoid-page !important;
+      page-break-inside: avoid !important;
     }
   }
 `}</style>

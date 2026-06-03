@@ -107,7 +107,7 @@ export default function PrintGuidePage() {
           maxWidth: '800px',
           m: '0 auto',
           backgroundColor: 'white',
-          minHeight: '100vh',
+          minHeight: 'auto',
           px: 2,
           pb: 4,
           fontFamily: 'Arial, sans-serif',
@@ -119,7 +119,7 @@ export default function PrintGuidePage() {
 
           {/* Datos del paciente (compacto en 2 columnas) */}
           <Box sx={{
-            display: 'grid', gridTemplateColumns:'repeat(3, 1fr)', 
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
             fontSize: 12, mb: 0.5
           }}>
             <Box><strong>Paciente:</strong> {order.patient.lastName}, {order.patient.firstName}</Box>
@@ -137,7 +137,7 @@ export default function PrintGuidePage() {
             const left = rows.slice(0, mid);
             const right = rows.slice(mid);
             const Table = ({ data }: { data: Row[] }) => (
-              <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
+              <Box component="table" className="guide-table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                 <Box component="thead" sx={{ display: 'table-header-group' }}>
                   <Box component="tr">
                     <Box component="th" sx={{ textAlign: 'left', borderBottom: '1px solid #000', p: '3px 4px' }}>Determinación / Sección</Box>
@@ -146,7 +146,7 @@ export default function PrintGuidePage() {
                 </Box>
                 <Box component="tbody">
                   {data.map((r, i) => (
-                    <Box component="tr" key={i} sx={{ pageBreakInside: 'avoid' }}>
+                    <Box component="tr" key={i} sx={{ pageBreakInside: 'avoid', breakInside: 'avoid' }}>
                       <Box component="td" sx={{ p: '2px 4px' }}>
                         {r.section === 'header' ? (
                           <span style={{ fontWeight: 700 }}>{r.label}</span>
@@ -163,7 +163,7 @@ export default function PrintGuidePage() {
               </Box>
             );
             return (
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box className="guide-columns" sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
                 <Table data={left} />
                 <Table data={right} />
               </Box>
@@ -171,18 +171,86 @@ export default function PrintGuidePage() {
           })()}
         </Box>
 
-        {/* Estilos de impresión optimizados para 1 hoja A4 y dos columnas */}
+        {/* Estilos de impresión optimizados para A4 */}
         <style>{`
         @media print {
-          @page { size: A4; margin: 8mm 8mm 10mm 8mm; }
-          body * { visibility: hidden !important; }
-          #guide-root, #guide-root * { visibility: visible !important; }
-          #guide-root { position: absolute; left: 0; top: 0; width: 100%; }
-          #guide-root { font-size: 10.5px; }
-          #guide-root table th, #guide-root table td { padding: 2px 4px !important; }
-          tr, thead, tbody { page-break-inside: avoid; }
-          /* columnas */
-          #guide-root .MuiBox-root[style*='grid-template-columns: 1fr 1fr'] { gap: 10px !important; }
+          @page { size: A4 portrait; margin: 8mm; }
+
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
+
+          .no-print {
+            display: none !important;
+          }
+
+          /* Se imprime solamente la guía */
+          body * {
+            visibility: hidden !important;
+          }
+
+          #guide-root,
+          #guide-root * {
+            visibility: visible !important;
+          }
+
+          #guide-root {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 194mm !important;
+            max-width: 194mm !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+            box-shadow: none !important;
+            font-size: 10px !important;
+            font-family: Arial, sans-serif !important;
+          }
+
+          #guide-root h1 {
+            font-size: 16px !important;
+            line-height: 1.15 !important;
+            margin: 0 !important;
+          }
+
+          #guide-root table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+
+          #guide-root thead {
+            display: table-header-group !important;
+          }
+
+          #guide-root tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+
+          #guide-root th,
+          #guide-root td {
+            padding: 1.5px 3px !important;
+            line-height: 1.15 !important;
+          }
+
+          .guide-columns {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 6mm !important;
+            align-items: start !important;
+            page-break-inside: auto !important;
+            break-inside: auto !important;
+          }
+
+          .guide-table {
+            font-size: 9.6px !important;
+          }
         }
       `}
         </style>
