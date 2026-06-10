@@ -20,6 +20,47 @@ export type NomenOpt = { label: string; value: string; ub: number };
 
 const RESULT_ONLY_CODES = new Set(['660105']);
 const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
+const CULTIVO_CODE = '660105';
+const CULTIVO_RESULT_OPTIONS = [
+  'No se observa desarrollo luego de 48 hs de incubación',
+];
+const isCultivoCode = (code?: string | number | null) => String(code ?? '') === CULTIVO_CODE;
+
+type CultivoResultAutocompleteProps = {
+  value: string;
+  onChange: (value: string) => void;
+  isEdited: boolean;
+  idx: number;
+};
+
+function CultivoResultAutocomplete({
+  value,
+  onChange,
+  isEdited,
+  idx,
+}: CultivoResultAutocompleteProps) {
+  return (
+    <Autocomplete
+      freeSolo
+      options={CULTIVO_RESULT_OPTIONS}
+      inputValue={value}
+      onInputChange={(_, nextValue, reason) => {
+        if (reason !== 'reset') onChange(nextValue);
+      }}
+      onChange={(_, nextValue) => onChange(nextValue ?? '')}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          size="small"
+          placeholder="Elegí una opción o escribí el resultado"
+          inputProps={{ ...params.inputProps, 'data-idx': idx }}
+          fullWidth
+          sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+        />
+      )}
+    />
+  );
+}
 
 export default function OrderDetailPage() {
   const { orderId = '' } = useParams();
@@ -475,6 +516,17 @@ export default function OrderDetailPage() {
                   const current = drafts[a.id]?.value ?? String(baseShown ?? '');
                   const isEdited = !!drafts[a.id];
                   const idx = nextIdx();
+                  const updateValue = (value: string) => {
+                    setDrafts((d) => ({
+                      ...d,
+                      [a.id]: {
+                        orderItemId: item.id,
+                        analyteId: a.id,
+                        kind: a.itemDef.kind,
+                        value,
+                      },
+                    }));
+                  };
 
                   return (
                     <TableRow key={item.id} hover>
@@ -482,23 +534,26 @@ export default function OrderDetailPage() {
                       <TableCell width={120}><code style={{ fontWeight: 600 }}>{item.examType.code}</code></TableCell>
                       <TableCell>{capitalize(a.itemDef.label)}</TableCell>
                       <TableCell width={150} colSpan={resultOnly ? 3 : undefined}>
-                        <TextField
-                          size="small"
-                          type={kind === 'NUMERIC' ? 'number' : 'text'}
-                          value={current}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setDrafts((d) => ({
-                              ...d,
-                              [a.id]: { orderItemId: item.id, analyteId: a.id, kind: a.itemDef.kind, value: v },
-                            }));
-                          }}
-                          onKeyDown={handleEnterNav}
-                          inputProps={{ 'data-idx': idx, onKeyDown: handleEnterNav }}
-                          placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
-                          fullWidth
-                          sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
-                        />
+                        {isCultivoCode(item.examType.code) ? (
+                          <CultivoResultAutocomplete
+                            value={String(current)}
+                            onChange={updateValue}
+                            isEdited={isEdited}
+                            idx={idx}
+                          />
+                        ) : (
+                          <TextField
+                            size="small"
+                            type={kind === 'NUMERIC' ? 'number' : 'text'}
+                            value={current}
+                            onChange={(e) => updateValue(e.target.value)}
+                            onKeyDown={handleEnterNav}
+                            inputProps={{ 'data-idx': idx, onKeyDown: handleEnterNav }}
+                            placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                            fullWidth
+                            sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                          />
+                        )}
                       </TableCell>
                       {!resultOnly && (
                         <>
@@ -727,42 +782,48 @@ export default function OrderDetailPage() {
                                       const isEdited = !!drafts[a.id];
                                       const idx = nextIdx();
                                       const numericPreview = kind === 'NUMERIC' ? fmtNum(current) : '';
+                                      const updateValue = (value: string) => {
+                                        setDrafts((d) => ({
+                                          ...d,
+                                          [a.id]: {
+                                            orderItemId: item.id,
+                                            analyteId: a.id,
+                                            kind: a.itemDef.kind,
+                                            value,
+                                          },
+                                        }));
+                                      };
                                       return (
                                         <TableRow key={a.id}>
                                           <TableCell>{capitalize(a.itemDef.label)}</TableCell>
                                           <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
-                                            <TextField
-                                              size="small"
-                                              type={kind === 'NUMERIC' ? 'number' : 'text'}
-                                              value={current}
-                                              onKeyDown={handleEnterNav}
-                                              inputProps={{ 'data-idx': idx }}
-                                              InputProps={{
-                                                endAdornment: (kind === 'NUMERIC' && numericPreview) ? (
-                                                  <InputAdornment position="end" sx={{ color: 'text.secondary', fontSize: 12 }}>
-                                                    {numericPreview}
-                                                  </InputAdornment>
-                                                ) : undefined,
-                                              }}
-                                              onChange={(e) => {
-                                                const v = e.target.value;
-                                                setDrafts((d) => {
-                                                  const next = {
-                                                    ...d,
-                                                    [a.id]: {
-                                                      orderItemId: item.id,
-                                                      analyteId: a.id,
-                                                      kind: a.itemDef.kind,
-                                                      value: v,
-                                                    },
-                                                  };
-                                                  return next;
-                                                });
-                                              }}
-                                              placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
-                                              fullWidth
-                                              sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
-                                            />
+                                            {isCultivoCode(item.examType.code) ? (
+                                              <CultivoResultAutocomplete
+                                                value={String(current)}
+                                                onChange={updateValue}
+                                                isEdited={isEdited}
+                                                idx={idx}
+                                              />
+                                            ) : (
+                                              <TextField
+                                                size="small"
+                                                type={kind === 'NUMERIC' ? 'number' : 'text'}
+                                                value={current}
+                                                onKeyDown={handleEnterNav}
+                                                inputProps={{ 'data-idx': idx }}
+                                                InputProps={{
+                                                  endAdornment: (kind === 'NUMERIC' && numericPreview) ? (
+                                                    <InputAdornment position="end" sx={{ color: 'text.secondary', fontSize: 12 }}>
+                                                      {numericPreview}
+                                                    </InputAdornment>
+                                                  ) : undefined,
+                                                }}
+                                                onChange={(e) => updateValue(e.target.value)}
+                                                placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
+                                                fullWidth
+                                                sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                              />
+                                            )}
                                           </TableCell>
                                           {!resultOnly && (
                                             <>

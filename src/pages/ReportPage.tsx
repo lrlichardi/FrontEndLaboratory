@@ -130,6 +130,27 @@ const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.ha
 const CULTIVO_CODE = '660105';
 const isCultivoCode = (code?: string | number | null) =>
   String(code ?? '') === CULTIVO_CODE;
+const REPORT_CODE_ORDER = new Map([
+  '660711',
+  '660105',
+  '660176',
+  '660035',
+].map((code, index) => [code, index]));
+const DEFAULT_REPORT_ORDER = REPORT_CODE_ORDER.size;
+
+const reportOrderForCode = (code?: string | number | null) =>
+  REPORT_CODE_ORDER.get(String(code ?? '')) ?? DEFAULT_REPORT_ORDER;
+
+const compareByReportCode = (
+  a: TestOrder['items'][number],
+  b: TestOrder['items'][number],
+) => reportOrderForCode(a.examType.code) - reportOrderForCode(b.examType.code);
+
+const reportOrderForItems = (items: TestOrder['items']) =>
+  items.reduce(
+    (lowest, item) => Math.min(lowest, reportOrderForCode(item.examType.code)),
+    DEFAULT_REPORT_ORDER,
+  );
 
 function calculateAge(birthDate: Date | string): number {
   const today = new Date();
@@ -488,8 +509,9 @@ export default function ReportPage() {
         </Box> */}
 
         {(() => {
-          const urineItems = order.items.filter((i) => isUrineExamCode(i.examType.code));
-          const otherItems = order.items.filter((i) => !isUrineExamCode(i.examType.code));
+          const itemsByReportOrder = [...order.items].sort(compareByReportCode);
+          const urineItems = itemsByReportOrder.filter((i) => isUrineExamCode(i.examType.code));
+          const otherItems = itemsByReportOrder.filter((i) => !isUrineExamCode(i.examType.code));
 
           // 🔹 separo otros en multi-analito y single-analito
           const multiItemsBase = otherItems.filter((i) => (i.analytes?.length || 0) > 1);
@@ -499,6 +521,9 @@ export default function ReportPage() {
 
           // 🔹 ordenar multiItems: Hemograma primero, luego el resto alfabético
           const multiItems = [...multiItemsBase].sort((a, b) => {
+            const reportOrderDiff = compareByReportCode(a, b);
+            if (reportOrderDiff !== 0) return reportOrderDiff;
+
             const na = (a.examType.name || '').toLowerCase();
             const nb = (b.examType.name || '').toLowerCase();
 
@@ -512,7 +537,7 @@ export default function ReportPage() {
           });
 
           return (
-            <>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
               {/* === MULTI-ITEMS: cada estudio en su propia tabla (incluye HEMOGRAMA) === */}
               {multiItems.map((item) => {
                 const normalAnalytes = item.analytes.filter(a =>
@@ -577,7 +602,11 @@ export default function ReportPage() {
                 }
 
                 return (
-                  <Box key={item.id} className="exam-block">
+                  <Box
+                    key={item.id}
+                    className="exam-block"
+                    sx={{ order: reportOrderForCode(item.examType.code) }}
+                  >
                     <Box className="exam-title" sx={{
                       backgroundColor: '#e3f2fd',
                       p: '8px',
@@ -698,7 +727,10 @@ export default function ReportPage() {
 
               {/* === SINGLE-ITEMS: una sola tabla acumulada, SIN columna "Estudio" === */}
               {singleItemsWithRef.length > 0 && (
-                <Box className="exam-block single-items-block">
+                <Box
+                  className="exam-block single-items-block"
+                  sx={{ order: reportOrderForItems(singleItemsWithRef) }}
+                >
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
                       <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
@@ -823,7 +855,13 @@ export default function ReportPage() {
 
 
               {singleResultOnlyItems.length > 0 && (
-                <Box className="exam-block result-only-block" sx={{ mt: singleItemsWithRef.length > 0 ? 0.5 : 0 }}>
+                <Box
+                  className="exam-block result-only-block"
+                  sx={{
+                    mt: singleItemsWithRef.length > 0 ? 0.5 : 0,
+                    order: reportOrderForItems(singleResultOnlyItems),
+                  }}
+                >
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
                       <Box component="tr" sx={{ backgroundColor: '#f5f5f5' }}>
@@ -904,7 +942,11 @@ export default function ReportPage() {
 
               {/* ORINA ANALISIS  */}
               {urineItems.map((item) => (
-                <Box key={item.id} className="exam-block urine-block">
+                <Box
+                  key={item.id}
+                  className="exam-block urine-block"
+                  sx={{ order: reportOrderForCode(item.examType.code) }}
+                >
                   <Box className="exam-title" sx={{
                     backgroundColor: '#e3f2fd',
                     p: '11px',
@@ -1075,7 +1117,7 @@ export default function ReportPage() {
                   })()}
                 </Box>
               ))}
-            </>
+            </Box>
           );
         })()}
 
