@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = (
+    import.meta.env.VITE_API_URL || `${window.location.origin}/api`
+).replace(/\/$/, "")
 import { type Patient } from './PatientApi'
 import { type ExamItemDef } from './ExamItemDefApi';
 import { OrderStatus } from '../utils/status';

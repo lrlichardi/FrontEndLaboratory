@@ -1,4 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = (
+  import.meta.env.VITE_API_URL || `${window.location.origin}/api`
+).replace(/\/$/, "")
 
 export type Patient = {
   id: string;
@@ -19,10 +21,10 @@ export type Patient = {
 };
 
 export type ListResponse<T> = {
-    data: T[];
-    total: number;
-    page: number;
-    pageSize: number;
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
 };
 
 export async function listPatients(query = '', page = 1, pageSize = 20): Promise<ListResponse<Patient>> {

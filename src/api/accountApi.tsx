@@ -1,5 +1,7 @@
 // cuenta clientes
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = (
+  import.meta.env.VITE_API_URL || `${window.location.origin}/api`
+).replace(/\/$/, "")
 // api.ts — funciones para cuenta de paciente
 export type AccountEntryKind = 'CHARGE' | 'PAYMENT' | 'ADJUSTMENT'
 

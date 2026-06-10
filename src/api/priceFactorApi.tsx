@@ -1,5 +1,7 @@
 
-const BASE_URL = import.meta.env.VITE_API_URL
+const BASE_URL = (
+  import.meta.env.VITE_API_URL || `${window.location.origin}/api`
+).replace(/\/$/, "")
 
 export async function apiGetPriceFactor(): Promise<number> {
   const res = await fetch(`${BASE_URL}/price/price-factor`, {
