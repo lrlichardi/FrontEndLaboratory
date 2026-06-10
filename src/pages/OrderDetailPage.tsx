@@ -21,28 +21,33 @@ export type NomenOpt = { label: string; value: string; ub: number };
 const RESULT_ONLY_CODES = new Set(['660105']);
 const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
 const CULTIVO_CODE = '660105';
-const CULTIVO_RESULT_OPTIONS = [
-  'No se observa desarrollo luego de 48 hs de incubación',
-];
-const isCultivoCode = (code?: string | number | null) => String(code ?? '') === CULTIVO_CODE;
+const COLONIAS_CODE = '660176';
+const QUICK_RESULT_OPTIONS: Record<string, string[]> = {
+  [CULTIVO_CODE]: ['No se observa desarrollo luego de 48 hs de incubación'],
+  [COLONIAS_CODE]: ['Más de 100.000'],
+};
+const quickResultOptionsForCode = (code?: string | number | null) =>
+  QUICK_RESULT_OPTIONS[String(code ?? '')];
 
-type CultivoResultAutocompleteProps = {
+type QuickResultAutocompleteProps = {
   value: string;
   onChange: (value: string) => void;
   isEdited: boolean;
   idx: number;
+  options: string[];
 };
 
-function CultivoResultAutocomplete({
+function QuickResultAutocomplete({
   value,
   onChange,
   isEdited,
   idx,
-}: CultivoResultAutocompleteProps) {
+  options,
+}: QuickResultAutocompleteProps) {
   return (
     <Autocomplete
       freeSolo
-      options={CULTIVO_RESULT_OPTIONS}
+      options={options}
       inputValue={value}
       onInputChange={(_, nextValue, reason) => {
         if (reason !== 'reset') onChange(nextValue);
@@ -516,6 +521,7 @@ export default function OrderDetailPage() {
                   const current = drafts[a.id]?.value ?? String(baseShown ?? '');
                   const isEdited = !!drafts[a.id];
                   const idx = nextIdx();
+                  const quickResultOptions = quickResultOptionsForCode(item.examType.code);
                   const updateValue = (value: string) => {
                     setDrafts((d) => ({
                       ...d,
@@ -534,12 +540,13 @@ export default function OrderDetailPage() {
                       <TableCell width={120}><code style={{ fontWeight: 600 }}>{item.examType.code}</code></TableCell>
                       <TableCell>{capitalize(a.itemDef.label)}</TableCell>
                       <TableCell width={150} colSpan={resultOnly ? 3 : undefined}>
-                        {isCultivoCode(item.examType.code) ? (
-                          <CultivoResultAutocomplete
+                        {quickResultOptions ? (
+                          <QuickResultAutocomplete
                             value={String(current)}
                             onChange={updateValue}
                             isEdited={isEdited}
                             idx={idx}
+                            options={quickResultOptions}
                           />
                         ) : (
                           <TextField
@@ -782,6 +789,7 @@ export default function OrderDetailPage() {
                                       const isEdited = !!drafts[a.id];
                                       const idx = nextIdx();
                                       const numericPreview = kind === 'NUMERIC' ? fmtNum(current) : '';
+                                      const quickResultOptions = quickResultOptionsForCode(item.examType.code);
                                       const updateValue = (value: string) => {
                                         setDrafts((d) => ({
                                           ...d,
@@ -797,12 +805,13 @@ export default function OrderDetailPage() {
                                         <TableRow key={a.id}>
                                           <TableCell>{capitalize(a.itemDef.label)}</TableCell>
                                           <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
-                                            {isCultivoCode(item.examType.code) ? (
-                                              <CultivoResultAutocomplete
+                                            {quickResultOptions ? (
+                                              <QuickResultAutocomplete
                                                 value={String(current)}
                                                 onChange={updateValue}
                                                 isEdited={isEdited}
                                                 idx={idx}
+                                                options={quickResultOptions}
                                               />
                                             ) : (
                                               <TextField
