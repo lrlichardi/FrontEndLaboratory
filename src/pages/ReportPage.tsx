@@ -124,6 +124,10 @@ const COL_DET = '40%';
 const COL_RES = '15%';
 const COL_UNIT = '10%';
 const COL_REF = '35%';
+const URINE_COL_DET = '34%';
+const URINE_COL_RES = '26%';
+const URINE_COL_UNIT = '12%';
+const URINE_COL_REF = '28%';
 
 const RESULT_ONLY_CODES = new Set(['660105']);
 const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.has(String(code ?? ''));
@@ -201,7 +205,7 @@ export default function ReportPage() {
     pageStyle: `
       @page {
         size: A4;
-        margin: 8mm 8mm 24mm 8mm;
+        margin: 0;
       }
 
       @media print {
@@ -225,7 +229,8 @@ export default function ReportPage() {
           max-width: none !important;
           min-height: auto !important;
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 8mm 8mm 24mm 8mm !important;
+          box-sizing: border-box !important;
           background: #ffffff !important;
           box-shadow: none !important;
           border-radius: 0 !important;
@@ -319,7 +324,9 @@ export default function ReportPage() {
 
         td,
         th {
-          overflow-wrap: anywhere !important;
+          overflow-wrap: break-word !important;
+          word-break: normal !important;
+          hyphens: none !important;
         }
 
         #report-root img {
@@ -1039,6 +1046,7 @@ export default function ReportPage() {
                                   sx={{
                                     width: '100%',
                                     borderCollapse: 'collapse',
+                                    tableLayout: 'fixed',
                                     fontSize: '12px',
                                     mt: 0.5,
                                   }}
@@ -1052,7 +1060,7 @@ export default function ReportPage() {
                                           borderBottom: '2px solid #ddd',
                                           fontWeight: 'bold',
                                           fontSize: '11px',
-                                          width: '10%',
+                                          width: URINE_COL_DET,
                                         }}
                                       >
                                         Determinación
@@ -1064,7 +1072,7 @@ export default function ReportPage() {
                                           borderBottom: '2px solid #ddd',
                                           fontWeight: 'bold',
                                           fontSize: '11px',
-                                          width: '15%',
+                                          width: URINE_COL_RES,
                                         }}
                                       >
                                         Resultado
@@ -1076,7 +1084,7 @@ export default function ReportPage() {
                                           borderBottom: '2px solid #ddd',
                                           fontWeight: 'bold',
                                           fontSize: '11px',
-                                          width: '10%',
+                                          width: URINE_COL_UNIT,
                                         }}
                                       >
                                         Unidad
@@ -1088,7 +1096,7 @@ export default function ReportPage() {
                                           borderBottom: '2px solid #ddd',
                                           fontWeight: 'bold',
                                           fontSize: '11px',
-                                          width: '30%',
+                                          width: URINE_COL_REF,
                                         }}
                                       >
                                         Val. de Referencia
@@ -1183,7 +1191,7 @@ export default function ReportPage() {
   @media print {
     @page {
       size: A4;
-      margin: 8mm 8mm 24mm 8mm;
+      margin: 0;
     }
 
     html,
@@ -1203,7 +1211,8 @@ export default function ReportPage() {
       max-width: none !important;
       min-height: auto !important;
       margin: 0 !important;
-      padding: 0 !important;
+      padding: 8mm 8mm 24mm 8mm !important;
+      box-sizing: border-box !important;
       background: #ffffff !important;
       box-shadow: none !important;
       border-radius: 0 !important;
@@ -1302,7 +1311,9 @@ export default function ReportPage() {
 
     td,
     th {
-      overflow-wrap: anywhere !important;
+      overflow-wrap: break-word !important;
+      word-break: normal !important;
+      hyphens: none !important;
     }
 
     #report-root img {
