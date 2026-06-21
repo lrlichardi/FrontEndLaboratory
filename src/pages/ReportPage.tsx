@@ -134,6 +134,8 @@ const isResultOnlyCode = (code?: string | number | null) => RESULT_ONLY_CODES.ha
 const CULTIVO_CODE = '660105';
 const isCultivoCode = (code?: string | number | null) =>
   String(code ?? '') === CULTIVO_CODE;
+const formatPhInReport = (value: string) =>
+  value.replace(/\bph[\s:=-]*(\d+(?:[.,]\d+)?)/gi, 'pH $1');
 const REPORT_CODE_ORDER = new Map([
   '660711',
   '660105',
@@ -969,11 +971,15 @@ export default function ReportPage() {
                   {(() => {
                     const groups = groupUrineAnalytes(item.analytes);
 
-                    const renderRows = (rows: typeof item.analytes, kind: 'EF' | 'EQ' | 'EM') => (
+                    const renderRows = (rows: typeof item.analytes, kind: 'EF' | 'EQ' | 'EM' | 'OTHER') => (
                       <Box component="tbody">
                         {rows.map((analyte) => {
                           const valueRaw = analyte.valueNum ?? analyte.valueText ?? '—';
                           const unit = analyte.unit || analyte.itemDef.unit
+                          const isReaction = analyte.itemDef.key === 'EF_Reaccion';
+                          const valueForReport = isReaction && typeof valueRaw === 'string'
+                            ? formatPhInReport(valueRaw)
+                            : valueRaw;
 
                           const refRaw = shouldApplySexAgeFilter({
                             itemKey: analyte.itemDef.key,
@@ -996,7 +1002,11 @@ export default function ReportPage() {
                             <Box component="tr" key={analyte.id} sx={{ borderBottom: '1px solid #eee' }}>
                               <Box component="td" sx={{ p: '5px' }}>{capitalize(analyte.itemDef.label)}</Box>
                               <Box component="td" sx={{ p: '5px', textAlign: 'right', fontWeight: 'bold', fontSize: '12px' }}>
-                                {typeof valueRaw === 'number' ? fmtNum(valueRaw, analyte.itemDef.label) : capitalize(valueRaw)}
+                                {typeof valueForReport === 'number'
+                                  ? fmtNum(valueForReport, analyte.itemDef.label)
+                                  : isReaction
+                                    ? formatPhInReport(capitalize(valueForReport))
+                                    : capitalize(valueForReport)}
                               </Box>
                               <Box component="td" sx={{ p: '5px', textAlign: 'center', color: '#666' }}>{unit || '—'}</Box>
                               <Box component="td" sx={{ p: '5px', color: '#666', fontSize: '12px', verticalAlign: 'top' }}>{renderReferenceText(refText, unit)}</Box>
@@ -1009,9 +1019,39 @@ export default function ReportPage() {
                     const Section = ({ title, rows, kind }: {
                       title: string;
                       rows: typeof item.analytes;
-                      kind: 'EF' | 'EQ' | 'EM';
+                      kind: 'EF' | 'EQ' | 'EM' | 'OTHER';
                     }) => {
                       if (!rows.length) return null;
+
+                      if (kind === 'OTHER') {
+                        const rowsWithValue = rows.filter((analyte) => {
+                          const value = analyte.valueText ?? analyte.valueNum;
+                          return value !== null && value !== undefined && String(value).trim() !== '';
+                        });
+
+                        if (!rowsWithValue.length) return null;
+
+                        return (
+                          <Box className="urine-section" sx={{ mb: 1 }}>
+                            <Box className="section-title" sx={{
+                              backgroundColor: '#f1f8ff',
+                              borderLeft: '4px solid #1976d2',
+                              px: 1.5,
+                              py: 0.75,
+                              fontWeight: 500,
+                              color: '#1976d2',
+                              fontSize: '14px',
+                            }}>
+                              {title}
+                            </Box>
+                            <Box sx={{ p: '5px', fontSize: '12px', whiteSpace: 'pre-wrap' }}>
+                              {rowsWithValue.map((analyte) => (
+                                <Box key={analyte.id}>{analyte.valueText ?? analyte.valueNum}</Box>
+                              ))}
+                            </Box>
+                          </Box>
+                        );
+                      }
 
                       // partir filas en dos columnas
                       const mid = Math.ceil(rows.length / 2);
@@ -1117,6 +1157,7 @@ export default function ReportPage() {
                         <Section title={urinePrefixTitle.EF} rows={groups.EF} kind="EF" />
                         <Section title={urinePrefixTitle.EQ} rows={groups.EQ} kind="EQ" />
                         <Section title={urinePrefixTitle.EM} rows={groups.EM} kind="EM" />
+                        <Section title="Observaciones" rows={groups.OTHER} kind="OTHER" />
                         <Box sx={{ fontSize: '13px', color: '#030000ff', fontStyle: 'italic', mb: 0.5, pl: 1 }}>
                           Muestra remitida
                         </Box>

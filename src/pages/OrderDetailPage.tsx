@@ -28,6 +28,27 @@ const QUICK_RESULT_OPTIONS: Record<string, string[]> = {
 };
 const quickResultOptionsForCode = (code?: string | number | null) =>
   QUICK_RESULT_OPTIONS[String(code ?? '')];
+const SEDIMENT_OPTIONS = ['Escaso', 'Regular', 'Abundante'] as const;
+const REACTION_OPTIONS = ['Ácida', 'Neutra', 'Alcalina'] as const;
+
+const normalizeText = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const formatPhMeasurement = (value: string) =>
+  value.replace(/\bph[\s:=-]*(\d+(?:[.,]\d+)?)/gi, 'pH $1');
+
+function splitReactionValue(value: string | number | null | undefined) {
+  const raw = String(value ?? '').trim();
+  const normalized = normalizeText(raw);
+  const reaction = REACTION_OPTIONS.find((option) => {
+    const normalizedOption = normalizeText(option);
+    return normalized === normalizedOption || normalized.startsWith(`${normalizedOption} `);
+  });
+
+  return {
+    reaction: reaction ?? '',
+    detail: formatPhMeasurement(reaction ? raw.replace(/^\S+\s*/, '') : raw),
+  };
+}
 
 type QuickResultAutocompleteProps = {
   value: string;
@@ -646,23 +667,44 @@ export default function OrderDetailPage() {
                                         const currentDraft = drafts[a.id]?.value;
 
                                         const labelLc = (a.itemDef?.label || '').trim().toLowerCase();
+                                        const itemKey = a.itemDef?.key ?? '';
                                         const isUro = labelLc === 'urobilina';
                                         const isAspecto = mode === 'EF' && labelLc === 'aspecto';
+                                        const isSedimento = itemKey === 'EF_Sedimento';
+                                        const isReaccion = itemKey === 'EF_Reaccion';
                                         const EF_ASPECTO_OPTIONS = ['Limpido', 'Lig. Turbio', 'Turbio'] as const;
                                         const EQ_OPTIONS = ['No contiene', 'Contiene', 'Contiene +', 'Contiene ++', 'Contiene +++', 'Contiene ++++', 'Normal'] as const;
                                         const EM_EPI_OPTIONS = ['Escasas', 'Regulares', 'Abundantes'] as const;
                                         const EM_MUC_OPTIONS = ['Escaso', 'Regular', 'Abundante'] as const;
-                                        // const isEspuma = mode === 'EF' && (a.itemDef?.label.includes('Espuma'))
                                         const isEpiteliales = mode === 'EM' && (a.itemDef?.label.includes('CEL'));
                                         const isMucus = mode === 'EM' && (a.itemDef?.label.includes('MUCUS'));
                                         const raw = currentDraft ?? String(baseShown ?? '');
                                         const numericPreview = kind === 'NUMERIC' ? fmtNum(raw, a.itemDef.label) : '';
                                         const isEdited = !!drafts[a.id];
+                                        const reactionParts = isReaccion ? splitReactionValue(raw) : null;
+                                        const reactionDetailIdx = isReaccion ? nextIdx() : undefined;
+
+                                        const updateValue = (value: string | number) => {
+                                          setDrafts((d) => ({
+                                            ...d,
+                                            [a.id]: {
+                                              orderItemId: item.id,
+                                              analyteId: a.id,
+                                              kind: a.itemDef.kind ?? 'TEXT',
+                                              value,
+                                            },
+                                          }));
+                                        };
+
+                                        const updateReaction = (reaction: string, detail: string) => {
+                                          updateValue([reaction, formatPhMeasurement(detail).trim()].filter(Boolean).join(' '));
+                                        };
 
                                         const OPTIONS =
                                           isAspecto ? EF_ASPECTO_OPTIONS
-                                            : mode === 'EQ' ? EQ_OPTIONS
-                                              : (isEpiteliales ? EM_EPI_OPTIONS : isMucus ? EM_MUC_OPTIONS : []);
+                                            : isSedimento ? SEDIMENT_OPTIONS
+                                              : mode === 'EQ' ? EQ_OPTIONS
+                                                : (isEpiteliales ? EM_EPI_OPTIONS : isMucus ? EM_MUC_OPTIONS : []);
 
                                         const defaultValue =
                                           isAspecto ? 'Limpido'
@@ -677,22 +719,40 @@ export default function OrderDetailPage() {
                                             <TableCell>{capitalize(a.itemDef.label)}</TableCell>
 
                                             <TableCell width={160} colSpan={resultOnly ? 3 : undefined}>
-                                              {isAspecto || mode === 'EQ' || isEpiteliales || isMucus ? (
+                                              {isReaccion ? (
+                                                <Stack direction="row" spacing={1}>
+                                                  <TextField
+                                                    select
+                                                    size="small"
+                                                    value={reactionParts?.reaction ?? ''}
+                                                    onChange={(e) => updateReaction(e.target.value, reactionParts?.detail ?? '')}
+                                                    onKeyDown={handleEnterNav}
+                                                    inputProps={{ 'data-idx': idx, onKeyDown: handleEnterNav }}
+                                                    sx={{ minWidth: 130, bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                                  >
+                                                    <MenuItem value="">Seleccionar</MenuItem>
+                                                    {REACTION_OPTIONS.map((option) => (
+                                                      <MenuItem key={option} value={option}>{option}</MenuItem>
+                                                    ))}
+                                                  </TextField>
+                                                  <TextField
+                                                    size="small"
+                                                    value={reactionParts?.detail ?? ''}
+                                                    onChange={(e) => updateReaction(reactionParts?.reaction ?? '', e.target.value)}
+                                                    onKeyDown={handleEnterNav}
+                                                    inputProps={{ 'data-idx': reactionDetailIdx, onKeyDown: handleEnterNav }}
+                                                    placeholder="pH 5"
+                                                    fullWidth
+                                                    sx={{ bgcolor: isEdited ? 'rgba(255,220,0,0.12)' : undefined }}
+                                                  />
+                                                </Stack>
+                                              ) : isAspecto || isSedimento || mode === 'EQ' || isEpiteliales || isMucus ? (
                                                 <TextField
                                                   select
                                                   size="small"
                                                   value={shownValue}
                                                   onChange={(e) => {
-                                                    const v = e.target.value as string;
-                                                    setDrafts((d) => ({
-                                                      ...d,
-                                                      [a.id]: {
-                                                        orderItemId: item.id,
-                                                        analyteId: a.id,
-                                                        kind: a.itemDef.kind ?? 'TEXT',
-                                                        value: v,
-                                                      },
-                                                    }));
+                                                    updateValue(e.target.value as string);
                                                   }}
                                                   onKeyDown={handleEnterNav}
                                                   inputProps={{ 'data-idx': idx, onKeyDown: handleEnterNav }}
@@ -718,16 +778,7 @@ export default function OrderDetailPage() {
                                                   type={kind === 'NUMERIC' ? 'number' : 'text'}
                                                   value={currentDraft ?? String(baseShown ?? '')}
                                                   onChange={(e) => {
-                                                    const v = e.target.value;
-                                                    setDrafts((d) => ({
-                                                      ...d,
-                                                      [a.id]: {
-                                                        orderItemId: item.id,
-                                                        analyteId: a.id,
-                                                        kind: a.itemDef.kind,
-                                                        value: v,
-                                                      },
-                                                    }));
+                                                    updateValue(e.target.value);
                                                   }}
                                                   placeholder={kind === 'NUMERIC' ? '0.00' : 'Texto'}
                                                   fullWidth
@@ -775,6 +826,12 @@ export default function OrderDetailPage() {
                                           <>
                                             <SectionRow title={urinePrefixTitle.EM} />
                                             {renderRows(groups.EM, 'EM')}
+                                          </>
+                                        )}
+                                        {groups.OTHER.length > 0 && (
+                                          <>
+                                            <SectionRow title="Observaciones" />
+                                            {renderRows(groups.OTHER, 'EM')}
                                           </>
                                         )}
                                       </>
