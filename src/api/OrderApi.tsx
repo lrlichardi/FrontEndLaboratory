@@ -38,6 +38,7 @@ export type OrderItemAnalyte = {
 export type OrderItem = {
     id: string;
     examTypeId: string;
+    sortOrder: number;
     examType: { code: string; name: string };
     analytes: OrderItemAnalyte[];
 };

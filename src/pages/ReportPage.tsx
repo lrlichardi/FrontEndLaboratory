@@ -136,28 +136,6 @@ const isCultivoCode = (code?: string | number | null) =>
   String(code ?? '') === CULTIVO_CODE;
 const formatPhInReport = (value: string) =>
   value.replace(/\bph[\s:=-]*(\d+(?:[.,]\d+)?)/gi, 'pH $1');
-const REPORT_CODE_ORDER = new Map([
-  '660711',
-  '660105',
-  '660176',
-  '660035',
-].map((code, index) => [code, index]));
-const DEFAULT_REPORT_ORDER = REPORT_CODE_ORDER.size;
-
-const reportOrderForCode = (code?: string | number | null) =>
-  REPORT_CODE_ORDER.get(String(code ?? '')) ?? DEFAULT_REPORT_ORDER;
-
-const compareByReportCode = (
-  a: TestOrder['items'][number],
-  b: TestOrder['items'][number],
-) => reportOrderForCode(a.examType.code) - reportOrderForCode(b.examType.code);
-
-const reportOrderForItems = (items: TestOrder['items']) =>
-  items.reduce(
-    (lowest, item) => Math.min(lowest, reportOrderForCode(item.examType.code)),
-    DEFAULT_REPORT_ORDER,
-  );
-
 function calculateAge(birthDate: Date | string): number {
   const today = new Date();
   const birth = new Date(birthDate);
@@ -518,32 +496,37 @@ export default function ReportPage() {
         </Box> */}
 
         {(() => {
-          const itemsByReportOrder = [...order.items].sort(compareByReportCode);
-          const urineItems = itemsByReportOrder.filter((i) => isUrineExamCode(i.examType.code));
-          const otherItems = itemsByReportOrder.filter((i) => !isUrineExamCode(i.examType.code));
+          // El servidor entrega los ítems en el mismo orden en que fueron cargados.
+          // Agrupamos sólo los estudios simples consecutivos, para no moverlos de lugar.
+          const itemsInEntryOrder = order.items;
+          const itemPosition = new Map(itemsInEntryOrder.map((item, index) => [item.id, index]));
+          const positionFor = (item: TestOrder['items'][number]) => itemPosition.get(item.id) ?? 0;
+          const groupConsecutiveItems = (items: TestOrder['items']) =>
+            items.reduce<TestOrder['items'][]>((groups, item) => {
+              const currentGroup = groups[groups.length - 1];
+              const previousItem = currentGroup?.[currentGroup.length - 1];
+
+              if (!previousItem || positionFor(item) !== positionFor(previousItem) + 1) {
+                groups.push([item]);
+              } else {
+                currentGroup.push(item);
+              }
+
+              return groups;
+            }, []);
+
+          const urineItems = itemsInEntryOrder.filter((i) => isUrineExamCode(i.examType.code));
+          const otherItems = itemsInEntryOrder.filter((i) => !isUrineExamCode(i.examType.code));
 
           // 🔹 separo otros en multi-analito y single-analito
-          const multiItemsBase = otherItems.filter((i) => (i.analytes?.length || 0) > 1);
+          const multiItems = otherItems.filter((i) => (i.analytes?.length || 0) > 1);
           const singleItems = otherItems.filter((i) => (i.analytes?.length || 0) === 1);
-          const singleItemsWithRef = singleItems.filter((i) => !isResultOnlyCode(i.examType.code));
-          const singleResultOnlyItems = singleItems.filter((i) => isResultOnlyCode(i.examType.code));
-
-          // 🔹 ordenar multiItems: Hemograma primero, luego el resto alfabético
-          const multiItems = [...multiItemsBase].sort((a, b) => {
-            const reportOrderDiff = compareByReportCode(a, b);
-            if (reportOrderDiff !== 0) return reportOrderDiff;
-
-            const na = (a.examType.name || '').toLowerCase();
-            const nb = (b.examType.name || '').toLowerCase();
-
-            const aEsHemo = na.includes('hemograma');
-            const bEsHemo = nb.includes('hemograma');
-
-            if (aEsHemo && !bEsHemo) return -1;
-            if (!aEsHemo && bEsHemo) return 1;
-
-            return na.localeCompare(nb);
-          });
+          const singleItemsWithRefGroups = groupConsecutiveItems(
+            singleItems.filter((i) => !isResultOnlyCode(i.examType.code)),
+          );
+          const singleResultOnlyItemGroups = groupConsecutiveItems(
+            singleItems.filter((i) => isResultOnlyCode(i.examType.code)),
+          );
 
           return (
             <Box sx={{ display: 'flex', flexDirection: 'column' }}>
@@ -614,7 +597,7 @@ export default function ReportPage() {
                   <Box
                     key={item.id}
                     className="exam-block"
-                    sx={{ order: reportOrderForCode(item.examType.code) }}
+                    sx={{ order: positionFor(item) }}
                   >
                     <Box className="exam-title" sx={{
                       backgroundColor: '#e3f2fd',
@@ -735,10 +718,11 @@ export default function ReportPage() {
 
 
               {/* === SINGLE-ITEMS: una sola tabla acumulada, SIN columna "Estudio" === */}
-              {singleItemsWithRef.length > 0 && (
+              {singleItemsWithRefGroups.map((singleItemsWithRef) => (
                 <Box
+                  key={`single-items-${singleItemsWithRef[0].id}`}
                   className="exam-block single-items-block"
-                  sx={{ order: reportOrderForItems(singleItemsWithRef) }}
+                  sx={{ order: positionFor(singleItemsWithRef[0]) }}
                 >
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
                     <Box component="thead">
@@ -860,15 +844,16 @@ export default function ReportPage() {
                     </Box>
                   </Box>
                 </Box>
-              )}
+              ))}
 
 
-              {singleResultOnlyItems.length > 0 && (
+              {singleResultOnlyItemGroups.map((singleResultOnlyItems) => (
                 <Box
+                  key={`result-only-${singleResultOnlyItems[0].id}`}
                   className="exam-block result-only-block"
                   sx={{
-                    mt: singleItemsWithRef.length > 0 ? 0.5 : 0,
-                    order: reportOrderForItems(singleResultOnlyItems),
+                    mt: 0.5,
+                    order: positionFor(singleResultOnlyItems[0]),
                   }}
                 >
                   <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', fontSize: '11px' }}>
@@ -947,14 +932,14 @@ export default function ReportPage() {
                     </Box>
                   </Box>
                 </Box>
-              )}
+              ))}
 
               {/* ORINA ANALISIS  */}
               {urineItems.map((item) => (
                 <Box
                   key={item.id}
                   className="exam-block urine-block"
-                  sx={{ order: reportOrderForCode(item.examType.code) }}
+                  sx={{ order: positionFor(item) }}
                 >
                   <Box className="exam-title" sx={{
                     backgroundColor: '#e3f2fd',
