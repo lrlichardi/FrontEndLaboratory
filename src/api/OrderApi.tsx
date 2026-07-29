@@ -51,8 +51,10 @@ export interface TestOrder {
     notes?: string | null;
     patientId: string;
     patient: Patient;
-    doctorId?: string;
+    doctorId?: string | null;
     doctor?: { fullName?: string | null } | null;
+    methodPay?: string | null;
+    status?: OrderStatus;
     items: OrderItem[];
 }
 
@@ -81,6 +83,7 @@ export async function createOrder(payload: {
     orderNumber?: string | null;
     title?: string | null;
     doctorId?: string;
+    createdAt?: string | null;
     examCodes: string[];
     methodPay: string | null,
 }): Promise<TestOrder> {
@@ -137,7 +140,7 @@ export async function deleteOrder(orderId: string) {
 }
 
 export async function updateOrder(id: string, body: {
-    orderNumber?: string | null, title?: string | null; doctorId?: string | null; notes?: string | null; methodPay: string | null;
+    orderNumber?: string | null, title?: string | null; doctorId?: string | null; notes?: string | null; methodPay: string | null; createdAt?: string | null;
 }) {
     const r = await fetch(`${BASE_URL}/orders/${id}`, {
         method: 'PATCH',

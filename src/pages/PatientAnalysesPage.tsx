@@ -31,6 +31,16 @@ import FlagChip from '../components/FlagChip';
 import DoctorFormDialog from '../components/DoctorFormDialog';
 import { apiGetPriceFactor } from '../api/priceFactorApi';
 
+const formatDateInput = (value?: string | Date | null) => {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function PatientAnalysesPage() {
   const { patientId = '' } = useParams();
   const navigate = useNavigate();
@@ -43,6 +53,7 @@ export default function PatientAnalysesPage() {
   const [notes, setNotes] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [title, setTitle] = useState('');
+  const [analysisDate, setAnalysisDate] = useState(formatDateInput());
 
   const [doctorId, setDoctorId] = useState('');
   const [nomenInput, setNomenInput] = useState('');
@@ -78,6 +89,7 @@ export default function PatientAnalysesPage() {
     setEditingOrder(null);
     setOrderNumber('');
     setTitle('');
+    setAnalysisDate(formatDateInput());
     setDoctorId('');
     setmethodPay('');
     setNotes('');
@@ -127,7 +139,7 @@ export default function PatientAnalysesPage() {
   // columnas de la tabla
 
   const cols: GridColDef[] = useMemo(() => [
-    { field: 'createdAt', headerName: 'Fecha', minWidth: 140, valueGetter: p => (p.row.createdAt || '').slice(0, 10) },
+    { field: 'createdAt', headerName: 'Fecha', minWidth: 140, valueGetter: p => formatDateInput(p.row.createdAt) },
     { field: 'orderNumber', headerName: 'Orden', minWidth: 140, flex: 1 },
     {
       field: 'doctor', headerName: 'Médico', minWidth: 220, flex: 1,
@@ -167,6 +179,7 @@ export default function PatientAnalysesPage() {
                 setEditingOrder(p.row);
                 setOrderNumber(p.row.orderNumber || '');
                 setTitle(p.row.title || '');
+                setAnalysisDate(formatDateInput(p.row.createdAt));
                 setDoctorId(p.row.doctorId || '');
                 setmethodPay(p.row.methodPay || '');
 
@@ -237,6 +250,10 @@ export default function PatientAnalysesPage() {
     // orderNumber único en la lista actual (evita muchos P2002 locales)
     if (orderNumber && orders.some(o => o.id !== editingOrder?.id && (o.orderNumber || '') === orderNumber)) {
       e.orderNumber = 'Ya existe una orden con ese número';
+    }
+
+    if (!analysisDate) {
+      e.analysisDate = 'Ingresá la fecha del análisis';
     }
 
     // Reglas de pago
@@ -373,6 +390,7 @@ export default function PatientAnalysesPage() {
         const resp = await updateOrder(editingOrder.id, {
           orderNumber: orderNumber || null,
           title: title || null,
+          createdAt: analysisDate,
           doctorId: doctorId || undefined,
           methodPay: methodPay || null,
           notes: notes || null,
@@ -391,6 +409,7 @@ export default function PatientAnalysesPage() {
           patientId,
           orderNumber: orderNumber || undefined,
           title: title || undefined,
+          createdAt: analysisDate,
           doctorId: doctorId || undefined,
           methodPay: methodPay || null,
           examCodes: codes,
@@ -433,6 +452,7 @@ export default function PatientAnalysesPage() {
       setEditingOrder(null);
       setOrderNumber('');
       setTitle('');
+      setAnalysisDate(formatDateInput());
       setDoctorId('');
       setNotes('');
       setCodes([]);
@@ -462,8 +482,9 @@ export default function PatientAnalysesPage() {
     const p = parseFloat((paidNow || '0').replace(',', '.'));
     const okMoney = !exigeMontos || (Number.isFinite(t) && t > 0 && Number.isFinite(p) && p >= 0 && p <= t);
     const okDoctor = !methodPay?.startsWith('Obra Social') || !!doctorId;
-    return okCodes && okMoney && okDoctor && !loading;
-  }, [codes, methodPay, chargeTotal, paidNow, doctorId, loading]);
+    const okDate = !!analysisDate;
+    return okCodes && okMoney && okDoctor && okDate && !loading;
+  }, [codes, methodPay, chargeTotal, paidNow, doctorId, analysisDate, loading]);
 
   return (
     <Box sx={{
@@ -538,6 +559,16 @@ export default function PatientAnalysesPage() {
             <TextField label="N° de orden" value={orderNumber} onChange={(e) => { setOrderNumber(e.target.value); clearErr('orderNumber'); setError(null); }} error={!!errs.orderNumber}
               helperText={errs.orderNumber || ''} fullWidth />
             <TextField label="Titulo" value={title} onChange={(e) => setTitle(e.target.value)} fullWidth />
+            <TextField
+              label="Fecha del análisis"
+              type="date"
+              value={analysisDate}
+              onChange={(e) => { setAnalysisDate(e.target.value); clearErr('analysisDate'); setError(null); }}
+              error={!!errs.analysisDate}
+              helperText={errs.analysisDate || ''}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+            />
 
             {/* 👇 Select de médicos (MenuItem) */}
             <Stack direction="row" spacing={1} alignItems="center">

@@ -258,6 +258,25 @@ export default function ReportPage() {
           color: #888 !important;
         }
 
+        #report-root.short-report {
+          padding-bottom: 8mm !important;
+        }
+
+        #report-root.short-report .regular-signature {
+          display: flex !important;
+          margin-top: 8mm !important;
+          padding-top: 0 !important;
+        }
+
+        #report-root.short-report .regular-footer {
+          display: block !important;
+          margin-top: 2mm !important;
+        }
+
+        #report-root.short-report .print-fixed-signature {
+          display: none !important;
+        }
+
         .exam-block {
           break-inside: avoid-page !important;
           page-break-inside: avoid !important;
@@ -365,6 +384,12 @@ export default function ReportPage() {
     return capitalize(raw);
   };
 
+  const totalResultRows = order.items.reduce(
+    (total, item) => total + Math.max(item.analytes?.length || 0, 1),
+    0,
+  );
+  const isShortReport = order.items.length <= 3 && totalResultRows <= 10;
+
   return (
     <>
       {/* Botones de acción - Solo visible en pantalla */}
@@ -386,6 +411,7 @@ export default function ReportPage() {
 
       {/* Contenido del informe */}
       <Box id="report-root"
+        className={isShortReport ? 'short-report' : undefined}
         ref={reportRef}
         sx={{
           maxWidth: '210mm', // Ancho A4
@@ -1284,6 +1310,25 @@ export default function ReportPage() {
       margin-top: 0.2mm !important;
       font-size: 4.2px !important;
       color: #888 !important;
+    }
+
+    #report-root.short-report {
+      padding-bottom: 8mm !important;
+    }
+
+    #report-root.short-report .regular-signature {
+      display: flex !important;
+      margin-top: 8mm !important;
+      padding-top: 0 !important;
+    }
+
+    #report-root.short-report .regular-footer {
+      display: block !important;
+      margin-top: 2mm !important;
+    }
+
+    #report-root.short-report .print-fixed-signature {
+      display: none !important;
     }
 
     .MuiAppBar-root,
